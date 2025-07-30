@@ -17,91 +17,14 @@ from src.core.models import (
 )
 from src.core.config import Config
 from src.core.api_client import OpenRouterClient
+from src.flows.game_execution import GameExecutionFlow
 from src.utils.game_logic import create_game_result, update_powers
+from src.utils.data_manager import DataManager
 import random
 import statistics
 
 logger = logging.getLogger(__name__)
 
-
-class GameExecutionNode(AsyncNode):
-    """Execute all games for a round sequentially."""
-    
-    def __init__(self, api_client: OpenRouterClient, config: Config):
-        """Initialize with API client and config.
-        
-        Args:
-            api_client: OpenRouter API client
-            config: Experiment configuration
-        """
-        super().__init__()
-        self.api_client = api_client
-        self.config = config
-        self.subagent_node = SubagentDecisionNode(api_client, config)
-    
-    async def _execute_impl(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute all games for the round.
-        
-        Args:
-            context: Experiment context
-            
-        Returns:
-            Updated context with games
-        """
-        validate_context(context, [
-            ContextKeys.AGENTS, 
-            ContextKeys.ROUND, 
-            ContextKeys.STRATEGIES
-        ])
-        
-        agents = context[ContextKeys.AGENTS]
-        round_num = context[ContextKeys.ROUND]
-        strategies = context[ContextKeys.STRATEGIES]
-        
-        # Create strategy lookup
-        strategy_map = {s.agent_id: s.strategy_text for s in strategies}
-        
-        # Get previous games for history
-        all_previous_games = []
-        for summary in context.get(ContextKeys.ROUND_SUMMARIES, []):
-            # In a real implementation, we'd load these from storage
-            pass
-        
-        games = []
-        game_num = 0
-        
-        # Play all pairwise games
-        for i in range(len(agents)):
-            for j in range(i + 1, len(agents)):
-                agent1 = agents[i]
-                agent2 = agents[j]
-                
-                # Get strategies
-                strategy1 = strategy_map.get(agent1.id, "Cooperate by default")
-                strategy2 = strategy_map.get(agent2.id, "Cooperate by default")
-                
-                # Get decisions from subagents
-                action1 = await self.subagent_node.make_decision(
-                    agent1, agent2, strategy1, games + all_previous_games
-                )
-                action2 = await self.subagent_node.make_decision(
-                    agent2, agent1, strategy2, games + all_previous_games
-                )
-                
-                # Create game result
-                game = create_game_result(
-                    round_num, game_num, agent1, agent2, action1, action2
-                )
-                games.append(game)
-                game_num += 1
-                
-                logger.info(
-                    f"Game {game.game_id}: Agent {agent1.id} ({action1}) vs "
-                    f"Agent {agent2.id} ({action2})"
-                )
-        
-        context[ContextKeys.GAMES] = games
-        return context
 
 
 class RoundSummaryNode(AsyncNode):
@@ -208,8 +131,40 @@ class RoundFlow(AsyncFlow):
         
         # Add nodes in order
         self.add_node(StrategyCollectionNode(api_client, config, rate_limiter))
-        self.add_node(GameExecutionNode(api_client, config))
+        # Note: GameExecutionFlow is intentionally not added as a node here.
+        # It inherits from AsyncFlow (not AsyncNode) and is designed to be
+        # called directly in the run() method. This allows it to orchestrate
+        # its own internal nodes if needed in future implementations.
         self.add_node(RoundSummaryNode())
+        
+        # Store GameExecutionFlow instance for direct execution
+        self.game_execution_flow = GameExecutionFlow()
+    
+    async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Run all nodes in sequence with GameExecutionFlow integrated.
+        
+        Execution order:
+        1. StrategyCollectionNode - Collects strategies from all agents
+        2. GameExecutionFlow - Executes round-robin tournament games
+        3. RoundSummaryNode - Creates anonymized round summary
+        
+        Args:
+            context: Initial context dictionary
+            
+        Returns:
+            Final context dictionary after all nodes execute
+        """
+        # Run strategy collection node
+        context = await self.nodes[0].execute(context)
+        
+        # Run GameExecutionFlow directly (not through node.execute())
+        # This is intentional as GameExecutionFlow is an AsyncFlow, not an AsyncNode
+        context = await self.game_execution_flow.run(context)
+        
+        # Run round summary node
+        context = await self.nodes[1].execute(context)
+        
+        return context
 
 
 class ExperimentFlow:
@@ -224,6 +179,7 @@ class ExperimentFlow:
         self.config = config
         self.experiment_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         self.api_client: Optional[OpenRouterClient] = None
+        self.data_manager = DataManager(base_path="results")
     
     async def run(self) -> ExperimentResult:
         """Run the complete experiment.
@@ -265,8 +221,49 @@ class ExperimentFlow:
                 # Run round
                 context = await round_flow.run(context)
                 
-                # Update powers after round
+                # Save strategies after collection
+                strategies = context.get(ContextKeys.STRATEGIES, [])
+                if strategies:
+                    try:
+                        self.data_manager.save_strategies(round_num, strategies)
+                        logger.info(f"Saved {len(strategies)} strategies for round {round_num}")
+                    except Exception as e:
+                        logger.error(f"Failed to save strategies for round {round_num}: {e}")
+                        self.data_manager.save_error_log(
+                            "strategy_storage_failure",
+                            str(e),
+                            {"round": round_num, "strategy_count": len(strategies)}
+                        )
+                
+                # Save games after execution
                 games = context[ContextKeys.GAMES]
+                if games:
+                    try:
+                        self.data_manager.save_games(round_num, games)
+                        logger.info(f"Saved {len(games)} games for round {round_num}")
+                    except Exception as e:
+                        logger.error(f"Failed to save games for round {round_num}: {e}")
+                        self.data_manager.save_error_log(
+                            "game_storage_failure",
+                            str(e),
+                            {"round": round_num, "game_count": len(games)}
+                        )
+                
+                # Save round summary
+                round_summaries = context.get(ContextKeys.ROUND_SUMMARIES, [])
+                if round_summaries and round_summaries[-1].round == round_num:
+                    try:
+                        self.data_manager.save_round_summary(round_summaries[-1])
+                        logger.info(f"Saved round summary for round {round_num}")
+                    except Exception as e:
+                        logger.error(f"Failed to save round summary for round {round_num}: {e}")
+                        self.data_manager.save_error_log(
+                            "round_summary_storage_failure",
+                            str(e),
+                            {"round": round_num}
+                        )
+                
+                # Update powers after round
                 update_powers(agents, games)
                 
                 # Update experiment stats
@@ -292,6 +289,18 @@ class ExperimentFlow:
         result.total_cost = (
             result.total_api_calls * 0.001  # Rough estimate
         )
+        
+        # Save final experiment results
+        try:
+            self.data_manager.save_experiment_result(result)
+            logger.info(f"Saved experiment results to {self.data_manager.get_experiment_path()}")
+        except Exception as e:
+            logger.error(f"Failed to save experiment results: {e}")
+            self.data_manager.save_error_log(
+                "experiment_result_storage_failure",
+                str(e),
+                {"experiment_id": self.experiment_id}
+            )
         
         logger.info(f"Experiment {self.experiment_id} completed")
         return result

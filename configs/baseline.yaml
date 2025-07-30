@@ -6,4 +6,4 @@ NUM_ROUNDS: 10
 
 # Model configuration
 MAIN_MODEL: "google/gemini-2.0-flash-exp:free"
-SUB_MODEL: "openai/gpt-4o-mini"
+SUB_MODEL: "openai/GPT-4.1-nano"

@@ -121,3 +121,30 @@ class OpenRouterClient:
         """
         response = await self.complete(messages, model, temperature, max_tokens, timeout)
         return response["choices"][0]["message"]["content"]
+    
+    async def get_completion_with_usage(
+        self,
+        messages: list,
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        timeout: float = 30.0
+    ) -> tuple[str, int, int]:
+        """Get completion text and token usage from the API.
+        
+        Args:
+            messages: List of message dictionaries
+            model: Model to use
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            timeout: Request timeout in seconds
+            
+        Returns:
+            Tuple of (completion_text, prompt_tokens, completion_tokens)
+        """
+        response = await self.complete(messages, model, temperature, max_tokens, timeout)
+        text = response["choices"][0]["message"]["content"]
+        usage = response.get("usage", {})
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        return text, prompt_tokens, completion_tokens
