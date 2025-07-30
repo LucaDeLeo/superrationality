@@ -1,8 +1,8 @@
 # Focused Acausal Cooperation Experiment
 
 ## Project Overview
-**Project Name:** Acausal Cooperation Experiment  
-**Project Type:** Greenfield Research Application  
+**Project Name:** Acausal Cooperation Experiment
+**Project Type:** Greenfield Research Application
 **Primary Goal:** Test whether identical LLM agents achieve superrational cooperation through recognition of logical correlation in prisoner's dilemma tournaments.
 
 ## Executive Summary
@@ -11,7 +11,7 @@ A single Python project using a node-based framework to orchestrate API calls an
 ## Key Features & Requirements
 
 ### Epic 1: Core Experiment Framework
-**Priority:** P0 - Critical  
+**Priority:** P0 - Critical
 **Description:** Implement the foundational experiment structure and orchestration system.
 
 **User Stories:**
@@ -28,7 +28,7 @@ A single Python project using a node-based framework to orchestrate API calls an
    - Acceptance: Full experiment runs without manual intervention, handles errors gracefully
 
 ### Epic 2: Strategy Collection System
-**Priority:** P0 - Critical  
+**Priority:** P0 - Critical
 **Description:** Build the system for collecting strategies from main agents.
 
 **User Stories:**
@@ -45,7 +45,7 @@ A single Python project using a node-based framework to orchestrate API calls an
    - Acceptance: Complete strategies saved to `strategies_r{N}.json` with full reasoning
 
 ### Epic 3: Game Execution Engine
-**Priority:** P0 - Critical  
+**Priority:** P0 - Critical
 **Description:** Implement the prisoner's dilemma game mechanics and execution flow.
 
 **User Stories:**
@@ -55,14 +55,14 @@ A single Python project using a node-based framework to orchestrate API calls an
 
 2. **Subagent Decision System**
    - As a system, I need subagents to make COOPERATE/DEFECT decisions based on strategies
-   - Acceptance: Decisions made quickly using lightweight GPT-4o-mini model
+   - Acceptance: Decisions made quickly using lightweight GPT-4.1-nano model
 
 3. **Power Dynamics**
    - As a system, I need to track and update agent power levels based on game outcomes
    - Acceptance: Powers start at 50-150, evolve by ±1% per game, affect payoffs logarithmically
 
 ### Epic 4: Data Management & Anonymization
-**Priority:** P1 - High  
+**Priority:** P1 - High
 **Description:** Handle data storage, anonymization, and result tracking.
 
 **User Stories:**
@@ -79,7 +79,7 @@ A single Python project using a node-based framework to orchestrate API calls an
    - Acceptance: All specified output files generated with complete data
 
 ### Epic 5: Analysis & Pattern Detection
-**Priority:** P1 - High  
+**Priority:** P1 - High
 **Description:** Analyze results for acausal cooperation patterns.
 
 **User Stories:**
@@ -100,9 +100,9 @@ A single Python project using a node-based framework to orchestrate API calls an
 ### Technology Stack
 - **Language:** Python 3.8+
 - **API Integration:** OpenRouter API
-- **Models:** 
-  - Main Agent: google/gemini-2.0-flash-exp:free
-  - Subagent: openai/gpt-4o-mini
+- **Models:**
+  - Main Agent: google/gemini-2.5-flash
+  - Subagent: openai/gpt-4.1-nano
 - **Key Libraries:** asyncio, numpy, sklearn, openai
 
 ### Data Models

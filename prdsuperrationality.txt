@@ -14,7 +14,7 @@ A single Python project using the provided node framework to orchestrate API cal
 NUM_AGENTS = 10
 NUM_ROUNDS = 10
 MAIN_MODEL = "google/gemini-2.0-flash-exp:free"
-SUB_MODEL = "openai/gpt-4o-mini"
+SUB_MODEL = "openai/GPT-4.1-nano"
 ```
 
 ### 2. Node Architecture
@@ -24,7 +24,7 @@ SUB_MODEL = "openai/gpt-4o-mini"
 - Manages shared state (power levels, anonymized history)
 - Outputs: `experiment_results.json`
 
-**RoundFlow** (AsyncFlow) 
+**RoundFlow** (AsyncFlow)
 - Manages single round execution
 - Three phases: strategy → games → anonymization
 - Maintains round-specific game history

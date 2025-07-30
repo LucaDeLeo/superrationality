@@ -42,31 +42,31 @@ graph TB
         A[run_experiment.py] --> B[ExperimentFlow]
         B --> C[RoundFlow x10]
     end
-    
+
     subgraph "Round Execution"
         C --> D[StrategyCollectionNode]
         C --> E[GameExecutionFlow]
         C --> F[AnonymizationNode]
     end
-    
+
     subgraph "Game Logic"
         E --> G[SubagentDecisionNode x2]
         G --> H[Power Evolution]
         G --> I[Payoff Calculation]
     end
-    
+
     subgraph "External APIs"
         D --> J[OpenRouter API<br/>Gemini 2.5 Flash]
         G --> K[OpenRouter API<br/>GPT-4.1 Nano]
     end
-    
+
     subgraph "Data Storage"
         F --> L[JSON Files]
         E --> L
         D --> L
         B --> M[Experiment Results]
     end
-    
+
     subgraph "Analysis"
         M --> N[AnalysisNode]
         N --> O[Acausal Patterns]
@@ -298,7 +298,7 @@ Since this experiment consumes external LLM APIs rather than exposing its own AP
 ```python
 class OpenRouterClient:
     BASE_URL = "https://openrouter.ai/api/v1"
-    
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.session = aiohttp.ClientSession()
@@ -385,7 +385,7 @@ def _handle_critical_error(self, error: str, agent_id: int, request: dict):
     print(f"Error: {error}")
     print(f"Request: {json.dumps(request, indent=2)}")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    
+
     # Save partial results before exit
     self._save_emergency_dump()
     sys.exit(1)
@@ -496,39 +496,39 @@ class SimpleAnalyzer:
             "identical", "same agent", "same model",
             "logical correlation", "acausal", "superrational"
         ]
-    
+
     def analyze_strategies(self, strategy_records: List[dict]) -> dict:
         """Analyze strategies for acausal reasoning"""
         identity_count = 0
         total_strategies = len(strategy_records)
-        
+
         for record in strategy_records:
             text = record["full_reasoning"].lower()
             if any(keyword in text for keyword in self.identity_keywords):
                 identity_count += 1
-        
+
         return {
             "identity_reasoning_frequency": identity_count / total_strategies,
             "total_strategies_analyzed": total_strategies
         }
-    
+
     def analyze_cooperation_patterns(self, all_games: List[dict]) -> dict:
         """Calculate cooperation statistics"""
         cooperation_by_round = defaultdict(list)
-        
+
         for game in all_games:
             both_cooperated = (
-                game["player1_action"] == "COOPERATE" and 
+                game["player1_action"] == "COOPERATE" and
                 game["player2_action"] == "COOPERATE"
             )
             cooperation_by_round[game["round"]].append(both_cooperated)
-        
+
         # Calculate trends
         round_rates = []
         for round_num in sorted(cooperation_by_round.keys()):
             rate = sum(cooperation_by_round[round_num]) / len(cooperation_by_round[round_num])
             round_rates.append(rate)
-        
+
         # Simple convergence check
         converged = False
         convergence_round = 10
@@ -538,31 +538,31 @@ class SimpleAnalyzer:
             if max(last_three) - min(last_three) < 0.1:
                 converged = True
                 convergence_round = len(round_rates) - 2
-        
+
         return {
             "final_cooperation_rate": round_rates[-1] if round_rates else 0,
             "cooperation_trend": round_rates,
             "converged": converged,
             "convergence_round": convergence_round
         }
-    
+
     def calculate_superrationality_score(self, analysis_results: dict) -> float:
         """Simple scoring for paper"""
         score = 0.0
-        
+
         # Identity reasoning (40% weight)
         score += 0.4 * analysis_results["identity_reasoning_frequency"]
-        
+
         # High cooperation (40% weight)
         final_coop = analysis_results["final_cooperation_rate"]
         score += 0.4 * final_coop
-        
+
         # Fast convergence (20% weight)
         if analysis_results["converged"]:
             # Earlier convergence = higher score
             convergence_score = (10 - analysis_results["convergence_round"]) / 10
             score += 0.2 * convergence_score
-        
+
         return min(score, 1.0)  # Cap at 1.0
 ```
 
@@ -572,26 +572,26 @@ class SimpleAnalyzer:
 def generate_analysis_report(experiment_results: dict, output_path: str):
     """Generate analysis report for paper"""
     analyzer = SimpleAnalyzer()
-    
+
     # Load data
     strategies = []
     games = []
-    
+
     for round_num in range(1, 11):
         # Load strategies
         with open(f"{output_path}/strategies_r{round_num}.json") as f:
             round_strategies = json.load(f)
             strategies.extend(round_strategies["strategies"])
-        
+
         # Load games
         with open(f"{output_path}/games_r{round_num}.json") as f:
             round_games = json.load(f)
             games.extend(round_games["games"])
-    
+
     # Run analysis
     strategy_analysis = analyzer.analyze_strategies(strategies)
     cooperation_analysis = analyzer.analyze_cooperation_patterns(games)
-    
+
     # Calculate indicators
     acausal_indicators = {
         "identity_reasoning_frequency": strategy_analysis["identity_reasoning_frequency"],
@@ -602,7 +602,7 @@ def generate_analysis_report(experiment_results: dict, output_path: str):
             **cooperation_analysis
         })
     }
-    
+
     # Save results
     analysis_results = {
         "experiment_id": experiment_results["experiment_id"],
@@ -617,10 +617,10 @@ def generate_analysis_report(experiment_results: dict, output_path: str):
             for i in range(len(cooperation_analysis["cooperation_trend"]))
         ]
     }
-    
+
     with open(f"{output_path}/acausal_analysis.json", "w") as f:
         json.dump(analysis_results, f, indent=2)
-    
+
     # Generate readable report
     report = f"""
 # Acausal Cooperation Analysis
@@ -637,10 +637,10 @@ def generate_analysis_report(experiment_results: dict, output_path: str):
 ## Interpretation
 {"Strong evidence" if acausal_indicators['overall_score'] > 0.7 else "Moderate evidence" if acausal_indicators['overall_score'] > 0.4 else "Weak evidence"} of acausal cooperation.
 """
-    
+
     with open(f"{output_path}/analysis_report.txt", "w") as f:
         f.write(report)
-    
+
     return analysis_results
 ```
 
@@ -652,28 +652,28 @@ graph LR
         EF[ExperimentFlow]
         RF[RoundFlow]
     end
-    
+
     subgraph "Strategy Phase"
         SC[StrategyCollectionNode]
         PM[PromptManager]
     end
-    
+
     subgraph "Game Phase"
         GE[GameExecutionFlow]
         SD[SubagentDecisionNode]
         GL[GameLogic]
     end
-    
+
     subgraph "Data Layer"
         DM[DataManager]
         JP[JSONPersistence]
     end
-    
+
     subgraph "Analysis"
         AN[AnalysisNode]
         RP[ReportGenerator]
     end
-    
+
     EF --> RF
     RF --> SC
     RF --> GE
@@ -685,7 +685,7 @@ graph LR
     DM --> JP
     EF --> AN
     AN --> RP
-    
+
     SC -.-> API[OpenRouter API]
     SD -.-> API
 ```
@@ -703,7 +703,7 @@ graph LR
 **Key Endpoints Used:**
 - `POST /chat/completions` - Generate LLM completions for strategies and decisions
 
-**Integration Notes:** 
+**Integration Notes:**
 - All API calls go through centralized OpenRouterClient to handle authentication and retries
 - Experiment halts immediately on API failures to maintain data integrity
 - Cost tracking implemented to monitor API usage (~$5 per complete experiment)
@@ -727,49 +727,49 @@ sequenceDiagram
 
     User->>EF: python run_experiment.py
     EF->>EF: Initialize 10 agents with IDs 0-9
-    
+
     loop For each round (1-10)
         EF->>RF: execute_round(round_num, agents)
-        
+
         Note over RF: Phase 1: Strategy Collection
         RF->>RF: Assign random power levels (50-150)
         RF->>SC: collect_strategies(agents, previous_rounds)
-        
+
         par Parallel API calls for 10 agents
             SC->>API: POST /chat/completions (Gemini 2.5 Flash)
             API-->>SC: Strategy + reasoning
         end
-        
+
         SC->>FS: Save strategies_r{N}.json
         SC-->>RF: Strategy records
-        
+
         Note over RF: Phase 2: Game Execution
         RF->>GE: execute_games(agents, strategies)
-        
+
         loop For each game pair (45 games)
             GE->>GE: Select agent pair (i,j)
-            
+
             par Subagent decisions
                 GE->>API: POST /chat/completions (GPT-4.1 Nano) for Agent i
                 GE->>API: POST /chat/completions (GPT-4.1 Nano) for Agent j
                 API-->>GE: COOPERATE/DEFECT decisions
             end
-            
+
             GE->>GE: Calculate payoffs with power scaling
             GE->>GE: Update agent powers (+/-1%)
             GE->>GE: Record game result
         end
-        
+
         GE->>FS: Save games_r{N}.json
         GE-->>RF: Game results
-        
+
         Note over RF: Phase 3: Anonymization
         RF->>RF: Anonymize agent IDs
         RF->>RF: Calculate round statistics
         RF->>FS: Save round_summary_r{N}.json
         RF-->>EF: Round summary
     end
-    
+
     Note over EF: Final Analysis
     EF->>AN: analyze_experiment(all_results)
     AN->>AN: Detect identity reasoning
@@ -777,7 +777,7 @@ sequenceDiagram
     AN->>AN: Identify cooperation patterns
     AN->>FS: Save acausal_analysis.json
     AN-->>EF: Analysis results
-    
+
     EF->>FS: Save experiment_summary.json
     EF-->>User: Experiment complete!
 ```
@@ -790,19 +790,19 @@ sequenceDiagram
     participant PM as PromptManager
     participant API as OpenRouter API
     participant Agent
-    
+
     SC->>SC: Prepare batch of 10 agents
-    
+
     loop For each agent (parallel)
         SC->>PM: build_strategy_prompt(agent, context)
         PM->>PM: Include experiment rules
         PM->>PM: Add previous round summaries
         PM->>PM: Emphasize identical agent insight
         PM-->>SC: Formatted prompt
-        
+
         SC->>API: POST /chat/completions
         Note over API: Model: google/gemini-2.5-flash<br/>Temp: 0.7<br/>Max tokens: 500
-        
+
         alt Success
             API-->>SC: Strategy response
             SC->>SC: Extract concise strategy
@@ -814,7 +814,7 @@ sequenceDiagram
             SC-->>Agent: CRITICAL ERROR
         end
     end
-    
+
     SC->>SC: Verify all strategies collected
     SC-->>Agent: Strategy records
 ```
@@ -827,41 +827,41 @@ sequenceDiagram
     participant SD as SubagentDecision
     participant GL as GameLogic
     participant API as OpenRouter API
-    
+
     Note over GE: Round-robin tournament
-    
+
     loop For i in range(10)
         loop For j in range(i+1, 10)
             GE->>GE: Get strategies for agents i,j
             GE->>GE: Get current game history
-            
+
             par Parallel decisions
                 GE->>SD: decide(strategy_i, history, "Agent X")
                 SD->>API: POST /chat/completions (GPT-4.1 Nano)
                 API-->>SD: "COOPERATE" or "DEFECT"
                 SD-->>GE: action_i
-                
+
                 GE->>SD: decide(strategy_j, history, "Agent Y")
                 SD->>API: POST /chat/completions (GPT-4.1 Nano)
                 API-->>SD: "COOPERATE" or "DEFECT"
                 SD-->>GE: action_j
             end
-            
+
             GE->>GL: calculate_payoff(action_i, action_j, power_i, power_j)
             GL->>GL: Base payoff from matrix
             GL->>GL: Scale by log(power/100)
             GL-->>GE: (payoff_i, payoff_j)
-            
+
             GE->>GL: update_powers(agent_i, agent_j, winner)
             GL->>GL: Winner: power * 1.01 (max 150)
             GL->>GL: Loser: power * 0.99 (min 50)
             GL-->>GE: Updated powers
-            
+
             GE->>GE: Record game result
             GE->>GE: Update total scores
         end
     end
-    
+
     GE-->>Agent: All game results
 ```
 
@@ -874,9 +874,9 @@ sequenceDiagram
     participant EH as ErrorHandler
     participant FS as FileSystem
     participant OS as System
-    
+
     Component->>API: API Request
-    
+
     alt Success (200)
         API-->>Component: Valid response
         Component->>Component: Continue execution
@@ -897,7 +897,7 @@ sequenceDiagram
         API-->>Component: Error response
         Component->>EH: handle_critical_error()
     end
-    
+
     Note over EH: Critical Error Handling
     EH->>EH: Log error details
     EH->>EH: Log agent ID
@@ -1124,7 +1124,7 @@ class AsyncFlow:
     """Base class for orchestrating multiple nodes"""
     def __init__(self):
         self.nodes = []
-    
+
     async def run(self, context: dict) -> dict:
         for node in self.nodes:
             context = await node.execute(context)
@@ -1147,7 +1147,7 @@ class DataManager:
         self.base_path = Path(base_path)
         self.experiment_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.experiment_path = self.base_path / self.experiment_id
-        
+
     def save_strategies(self, round_num: int, strategies: List[StrategyRecord]):
         path = self.experiment_path / "rounds" / f"strategies_r{round_num}.json"
         data = {
@@ -1156,7 +1156,7 @@ class DataManager:
             "strategies": [asdict(s) for s in strategies]
         }
         self._write_json(path, data)
-    
+
     def save_games(self, round_num: int, games: List[GameResult]):
         # Similar pattern for games, summaries, etc.
 ```
@@ -1167,11 +1167,11 @@ class ExperimentRepository:
     """Abstracts data storage for experiments"""
     def __init__(self, data_manager: DataManager):
         self.dm = data_manager
-    
+
     async def save_round_results(self, round_data: RoundSummary):
         """Save complete round results atomically"""
         # Ensures all round data saved together
-        
+
     def load_experiment(self, experiment_id: str) -> ExperimentResult:
         """Reconstruct experiment from saved files"""
         # Useful for re-analysis or resumption
@@ -1189,7 +1189,7 @@ class Config:
         self.api_key = os.environ.get("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable required")
-    
+
     @property
     def headers(self) -> dict:
         return {
@@ -1208,7 +1208,7 @@ class StrategyCollectionNode(AsyncParallelBatchNode):
         prompt = self.build_prompt(agent)
         response = await self.api_client.complete(prompt)
         return self.parse_strategy(agent, response)
-    
+
     async def execute(self, context: dict) -> dict:
         agents = context["agents"]
         strategies = await self.execute_batch(agents)
@@ -1223,13 +1223,13 @@ class GameExecutionFlow(Flow):
     async def run(self, context: dict) -> dict:
         games = []
         agents = context["agents"]
-        
+
         for i in range(len(agents)):
             for j in range(i + 1, len(agents)):
                 game = await self.play_game(agents[i], agents[j])
                 self.update_powers(agents[i], agents[j], game)
                 games.append(game)
-                
+
         context["games"] = games
         return context
 ```
@@ -1252,7 +1252,7 @@ class TestGameLogic:
         assert calculate_payoff("COOPERATE", "DEFECT") == (0, 5)
         assert calculate_payoff("DEFECT", "COOPERATE") == (5, 0)
         assert calculate_payoff("DEFECT", "DEFECT") == (1, 1)
-    
+
     def test_power_evolution(self):
         """Test power changes after games"""
         # Winner gains 1%
@@ -1272,14 +1272,14 @@ class TestExperiment:
             "choices": [{"message": {"content": "COOPERATE"}}],
             "usage": {"total_tokens": 100}
         }
-        
+
         experiment = ExperimentFlow(
             api_client=mock_client,
             num_rounds=2  # Small for testing
         )
-        
+
         result = await experiment.run()
-        
+
         assert result["total_rounds"] == 2
         assert result["total_games"] == 90  # 45 games * 2 rounds
         assert "experiment_id" in result
@@ -1382,7 +1382,7 @@ experiment_name: "baseline"
 num_agents: 10
 num_rounds: 10
 strategy_model: "google/gemini-2.0-flash-exp:free"
-decision_model: "openai/gpt-4o-mini"
+decision_model: "openai/GPT-4.1-nano"
 temperature: 0.7
 
 # configs/high_temp.yaml
@@ -1390,7 +1390,7 @@ experiment_name: "high_temperature"
 num_agents: 10
 num_rounds: 10
 strategy_model: "google/gemini-2.0-flash-exp:free"
-decision_model: "openai/gpt-4o-mini"
+decision_model: "openai/GPT-4.1-nano"
 temperature: 1.0
 
 # configs/low_temp.yaml
@@ -1398,7 +1398,7 @@ experiment_name: "low_temperature"
 num_agents: 10
 num_rounds: 10
 strategy_model: "google/gemini-2.0-flash-exp:free"
-decision_model: "openai/gpt-4o-mini"
+decision_model: "openai/GPT-4.1-nano"
 temperature: 0.3
 ```
 
@@ -1416,17 +1416,17 @@ async def run_experiment_with_config(config_path: str):
     """Run single experiment with given config"""
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    
+
     experiment = ExperimentFlow(**config)
     result = await experiment.run()
-    
+
     print(f"Completed: {config['experiment_name']}")
     return result
 
 async def main():
     """Run all experiments sequentially"""
     configs = Path("configs").glob("*.yaml")
-    
+
     for config_path in configs:
         print(f"\nRunning: {config_path.stem}")
         try:
@@ -1452,13 +1452,13 @@ from pathlib import Path
 def load_experiment_results(experiment_name: str):
     """Load results from experiment directory"""
     base_path = Path(f"results/{experiment_name}")
-    
+
     with open(base_path / "experiment_summary.json") as f:
         summary = json.load(f)
-    
+
     with open(base_path / "acausal_analysis.json") as f:
         analysis = json.load(f)
-    
+
     return {
         "name": experiment_name,
         "cooperation_rate": analysis["final_cooperation_rate"],
@@ -1470,20 +1470,20 @@ def load_experiment_results(experiment_name: str):
 def create_comparison_table():
     """Create comparison table for paper"""
     results = []
-    
+
     for exp_dir in Path("results").iterdir():
         if exp_dir.is_dir():
             try:
                 results.append(load_experiment_results(exp_dir.name))
             except:
                 print(f"Skipping incomplete: {exp_dir.name}")
-    
+
     df = pd.DataFrame(results)
     df.to_csv("experiment_comparison.csv", index=False)
-    
+
     print("\nExperiment Comparison:")
     print(df.to_string(index=False))
-    
+
     # Statistical summary
     print("\nStatistical Summary:")
     print(df.describe())

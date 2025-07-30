@@ -58,8 +58,8 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             messages = [{"role": "user", "content": prompt}]
             
             # Use asyncio.wait_for to enforce timeout
-            response = await asyncio.wait_for(
-                self.api_client.get_completion_text(
+            response_text, prompt_tokens, completion_tokens = await asyncio.wait_for(
+                self.api_client.get_completion_with_usage(
                     messages=messages,
                     model=self.config.MAIN_MODEL,
                     temperature=0.7,
@@ -68,7 +68,7 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
                 timeout=self.timeout
             )
             
-            return self.parse_strategy(agent, round_num, response)
+            return self.parse_strategy(agent, round_num, response_text, prompt_tokens, completion_tokens)
             
         except asyncio.TimeoutError:
             logger.error(f"Strategy collection timeout for agent {agent.id} in round {round_num}")
@@ -103,13 +103,15 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
         # Render the prompt using the template
         return STRATEGY_COLLECTION_PROMPT.render(context)
     
-    def parse_strategy(self, agent: Agent, round_num: int, response: str) -> StrategyRecord:
+    def parse_strategy(self, agent: Agent, round_num: int, response: str, prompt_tokens: int = 0, completion_tokens: int = 0) -> StrategyRecord:
         """Parse strategy from LLM response.
         
         Args:
             agent: Agent who created the strategy
             round_num: Current round number
             response: LLM response text
+            prompt_tokens: Number of tokens in the prompt
+            completion_tokens: Number of tokens in the completion
             
         Returns:
             StrategyRecord
@@ -134,6 +136,8 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             round=round_num,
             strategy_text=strategy_text,
             full_reasoning=response,  # Store full response as reasoning
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             model=self.config.MAIN_MODEL
         )
     

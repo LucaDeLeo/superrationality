@@ -14,7 +14,7 @@ from src.nodes import (
 from src.core.models import Agent, StrategyRecord, GameResult
 from src.core.config import Config
 from src.core.api_client import OpenRouterClient
-from src.flows.experiment import GameExecutionNode, RoundSummaryNode, RoundFlow
+from src.flows.experiment import RoundSummaryNode, RoundFlow
 from src.utils.game_logic import calculate_payoffs, update_powers
 
 

@@ -1,6 +1,6 @@
 # Epic 3: Game Execution Engine
 
-**Priority:** P0 - Critical  
+**Priority:** P0 - Critical
 **Description:** Implement the prisoner's dilemma game mechanics and execution flow.
 
 ## User Stories
@@ -19,7 +19,7 @@
 - **I need** subagents to make COOPERATE/DEFECT decisions based on strategies
 - **So that** strategies are executed consistently
 - **Acceptance Criteria:**
-  - Decisions made quickly using lightweight GPT-4o-mini model
+  - Decisions made quickly using lightweight GPT-4.1-nano model
   - Clear COOPERATE or DEFECT output
   - Game history provided as context
 

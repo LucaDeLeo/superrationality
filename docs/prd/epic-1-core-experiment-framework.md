@@ -1,6 +1,6 @@
 # Epic 1: Core Experiment Framework
 
-**Priority:** P0 - Critical  
+**Priority:** P0 - Critical
 **Description:** Implement the foundational experiment structure and orchestration system.
 
 ## User Stories
@@ -15,7 +15,7 @@
     - NUM_AGENTS = 10
     - NUM_ROUNDS = 10
     - MAIN_MODEL = "google/gemini-2.5-flash"
-    - SUB_MODEL = "openai/gpt-4o-mini"
+    - SUB_MODEL = "openai/gpt-4.1-nano"
 
 ### 2. Implement Node Architecture
 - **As a** system

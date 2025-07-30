@@ -61,10 +61,27 @@ class DataManager:
             strategies: List of strategy records from agents
         """
         path = self.experiment_path / "rounds" / f"strategies_r{round_num}.json"
+        
+        # Convert to Epic 2 format
+        formatted_strategies = []
+        for s in strategies:
+            # Map fields to Epic 2 specification
+            formatted_strategy = {
+                "round": s.round,
+                "agent_id": s.agent_id,
+                "timestamp": s.timestamp,
+                "model": s.model,
+                "strategy": s.strategy_text,  # Map strategy_text to strategy
+                "full_reasoning": s.full_reasoning,
+                "prompt_tokens": s.prompt_tokens,
+                "completion_tokens": s.completion_tokens
+            }
+            formatted_strategies.append(formatted_strategy)
+        
         data = {
             "round": round_num,
             "timestamp": datetime.now().isoformat(),
-            "strategies": [asdict(s) for s in strategies]
+            "strategies": formatted_strategies
         }
         self._write_json(path, data)
         
