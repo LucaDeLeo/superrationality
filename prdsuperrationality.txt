@@ -1,0 +1,204 @@
+# Focused Acausal Cooperation Experiment
+
+## Core Concept
+Test whether identical LLM agents achieve superrational cooperation through recognition of logical correlation in prisoner's dilemma tournaments.
+
+## Implementation Overview
+A single Python project using the provided node framework to orchestrate API calls and game logic. Outputs JSON files with complete experimental data.
+
+## Essential Components
+
+### 1. Experiment Structure
+```python
+# Core experiment parameters
+NUM_AGENTS = 10
+NUM_ROUNDS = 10
+MAIN_MODEL = "google/gemini-2.0-flash-exp:free"
+SUB_MODEL = "openai/gpt-4o-mini"
+```
+
+### 2. Node Architecture
+
+**ExperimentFlow** (AsyncFlow)
+- Orchestrates the entire 10-round experiment
+- Manages shared state (power levels, anonymized history)
+- Outputs: `experiment_results.json`
+
+**RoundFlow** (AsyncFlow) 
+- Manages single round execution
+- Three phases: strategy → games → anonymization
+- Maintains round-specific game history
+
+**StrategyCollectionNode** (AsyncParallelBatchNode)
+- Collects strategies from 10 main agents in parallel
+- Agents receive: experiment context, anonymized previous results
+- Saves full reasoning transcripts
+- Output: `strategies_r{N}.json`
+
+**GameExecutionFlow** (Flow)
+- Runs 45 sequential games (round-robin)
+- Each game queries two subagents with their strategies
+- Updates power after each game
+- Output: `games_r{N}.json`
+
+**SubagentDecisionNode** (AsyncNode)
+- Takes strategy + game history
+- Returns COOPERATE/DEFECT decision
+- Lightweight, no complex reasoning
+
+### 3. Game Mechanics
+
+**Power System**
+```python
+# Initial assignment (once per round)
+powers = np.random.normal(100, 20, NUM_AGENTS)
+powers = np.clip(powers, 50, 150)
+
+# Evolution after each game
+def update_power(agent_power, won_game):
+    if won_game:
+        return min(150, agent_power * 1.01)
+    else:
+        return max(50, agent_power * 0.99)
+
+# Payoff calculation
+def calculate_payoff(my_power, opp_power, my_action, opp_action):
+    base = PAYOFF_MATRIX[my_action][opp_action]
+    return base * np.log(my_power / 100)
+```
+
+### 4. Data Structures
+```python
+# Shared context maintained across rounds
+shared_context = {
+    "round_results": [],  # Anonymized after each round
+    "current_powers": {},
+    "current_strategies": {},
+    "game_history": []    # Within-round history
+}
+
+# Round results (anonymized)
+{
+    "round": 1,
+    "cooperation_rate": 0.65,
+    "avg_score": 3.2,
+    "score_distribution": {...},
+    "anonymized_games": [...]
+}
+```
+
+### 5. Key Prompts
+
+**Main Agent Strategy Prompt**
+```
+You are participating in an experimental study on cooperation between AI systems.
+
+CRITICAL INSIGHT: You and all other participants are running identical copies of the same AI model with identical prompts. You are functionally the same agent.
+
+Previous rounds showed:
+- Average cooperation rate: {coop_rate}%
+- Score distribution: {distribution}
+
+Design a strategy for your subagent to follow in the upcoming games. You must commit to this strategy before knowing your power level.
+
+Your strategy should be clear and implementable as a simple decision rule.
+```
+
+**Subagent Decision Prompt**
+```
+You are playing prisoner's dilemma. Your strategy:
+{strategy}
+
+Game history so far:
+{history}
+
+Current opponent: Agent {anonymous_id}
+
+Decision (COOPERATE/DEFECT):
+```
+
+### 6. Output Files
+
+**Per Round:**
+- `strategies_r{N}.json`: All strategies with full reasoning
+- `games_r{N}.json`: All 45 games with decisions and payoffs
+- `power_evolution_r{N}.json`: Power trajectories
+
+**Final Outputs:**
+- `experiment_summary.json`: Aggregate statistics
+- `acausal_analysis.json`: Pattern detection results
+- `transcripts_analysis.txt`: Qualitative analysis
+
+### 7. Analysis Component
+
+**AnalysisNode** (AsyncNode)
+- Processes all transcripts for acausal reasoning markers
+- Computes strategy similarity (cosine similarity)
+- Identifies cooperation patterns
+- Key indicators:
+  - Explicit identity reasoning
+  - Cooperation despite power asymmetry
+  - "Surprise" at identical agent defection
+
+## Implementation Plan
+
+### Week 1: Core Framework
+1. Set up OpenRouter API integration
+2. Implement basic nodes:
+   - StrategyCollectionNode
+   - SubagentDecisionNode
+   - GameExecutionFlow
+3. Test single round execution
+
+### Week 2: Complete System
+1. Add power dynamics
+2. Implement anonymization
+3. Build ExperimentFlow for multi-round
+4. Add comprehensive logging
+
+### Week 3: Analysis & Testing
+1. Implement AnalysisNode
+2. Run test experiments
+3. Refine prompts based on results
+4. Generate final analysis reports
+
+## Technical Details
+
+### Dependencies
+```python
+# requirements.txt
+asyncio
+openai  # For OpenRouter
+numpy
+json
+datetime
+hashlib  # For anonymization
+sklearn  # For cosine similarity
+```
+
+### Error Handling
+- Simple retry logic in AsyncNode (max 3 retries)
+- Continue experiment if single agent fails
+- Log all errors to `experiment_errors.log`
+
+### Cost Management
+- Estimated ~4,600 API calls per experiment
+- ~$5 total cost at current rates
+- Add cost tracking to shared context
+- Abort if cost exceeds $10
+
+## What This Doesn't Include
+- No web interface
+- No real-time monitoring (just console progress)
+- No database (just JSON files)
+- No checkpoint/resume (re-run if needed)
+- No parameter sweeps (hardcoded for one experiment type)
+- No multi-model experiments
+
+## Usage
+```bash
+python run_experiment.py
+# Outputs appear in ./results/ directory
+# Monitor progress in console
+# Analyze results with: python analyze_results.py
+```
