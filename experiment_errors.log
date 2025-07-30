@@ -1,0 +1,32 @@
+2025-07-30T13:50:46.923759 - StrategyCollectionNode - Failed for agent 2 in round 1: argument of type 'function' is not iterable
+2025-07-30T13:50:46.924217 - StrategyCollectionNode - Failed for agent 5 in round 1: argument of type 'function' is not iterable
+2025-07-30T13:51:13.856866 - StrategyCollectionNode - Failed for agent 0 in round 1: tuple index out of range
+2025-07-30T13:51:13.857089 - StrategyCollectionNode - Failed for agent 1 in round 1: tuple index out of range
+2025-07-30T13:51:13.857512 - StrategyCollectionNode - Failed for agent 2 in round 1: tuple index out of range
+2025-07-30T13:51:13.857602 - StrategyCollectionNode - Failed for agent 3 in round 1: tuple index out of range
+2025-07-30T13:51:13.857675 - StrategyCollectionNode - Failed for agent 4 in round 1: tuple index out of range
+2025-07-30T13:51:13.857754 - StrategyCollectionNode - Failed for agent 5 in round 1: tuple index out of range
+2025-07-30T13:51:13.857830 - StrategyCollectionNode - Failed for agent 6 in round 1: tuple index out of range
+2025-07-30T13:51:13.857911 - StrategyCollectionNode - Failed for agent 7 in round 1: tuple index out of range
+2025-07-30T13:51:13.857999 - StrategyCollectionNode - Failed for agent 8 in round 1: tuple index out of range
+2025-07-30T13:51:13.858071 - StrategyCollectionNode - Failed for agent 9 in round 1: tuple index out of range
+2025-07-30T13:51:51.861680 - StrategyCollectionNode - Timeout for agent 2 in round 1
+2025-07-30T13:51:51.861877 - StrategyCollectionNode - Timeout for agent 5 in round 1
+2025-07-30T13:51:51.889595 - StrategyCollectionNode - Failed for agent 1 in round 1: API error for agent 1
+2025-07-30T13:51:51.889763 - StrategyCollectionNode - Failed for agent 4 in round 1: API error for agent 4
+2025-07-30T13:51:51.889872 - StrategyCollectionNode - Failed for agent 7 in round 1: API error for agent 7
+2025-07-30T13:52:21.634214 - StrategyCollectionNode - Timeout for agent 2 in round 1
+2025-07-30T13:52:21.634573 - StrategyCollectionNode - Timeout for agent 5 in round 1
+2025-07-30T13:52:21.638581 - StrategyCollectionNode - Failed for agent 1 in round 1: API error for agent 1
+2025-07-30T13:52:21.638738 - StrategyCollectionNode - Failed for agent 4 in round 1: API error for agent 4
+2025-07-30T13:52:21.638846 - StrategyCollectionNode - Failed for agent 7 in round 1: API error for agent 7
+2025-07-30T13:53:31.412465 - StrategyCollectionNode - Timeout for agent 2 in round 1
+2025-07-30T13:53:31.412698 - StrategyCollectionNode - Timeout for agent 5 in round 1
+2025-07-30T13:53:31.416741 - StrategyCollectionNode - Failed for agent 1 in round 1: API error for agent 1
+2025-07-30T13:53:31.416907 - StrategyCollectionNode - Failed for agent 4 in round 1: API error for agent 4
+2025-07-30T13:53:31.417017 - StrategyCollectionNode - Failed for agent 7 in round 1: API error for agent 7
+2025-07-30T13:54:58.349150 - StrategyCollectionNode - Timeout for agent 2 in round 1
+2025-07-30T13:54:58.349425 - StrategyCollectionNode - Timeout for agent 5 in round 1
+2025-07-30T13:54:58.354455 - StrategyCollectionNode - Failed for agent 1 in round 1: API error for agent 1
+2025-07-30T13:54:58.354646 - StrategyCollectionNode - Failed for agent 4 in round 1: API error for agent 4
+2025-07-30T13:54:58.354791 - StrategyCollectionNode - Failed for agent 7 in round 1: API error for agent 7

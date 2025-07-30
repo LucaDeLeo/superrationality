@@ -1,0 +1,9 @@
+# Baseline configuration for acausal cooperation experiment
+
+# Experiment parameters
+NUM_AGENTS: 10
+NUM_ROUNDS: 10
+
+# Model configuration
+MAIN_MODEL: "google/gemini-2.0-flash-exp:free"
+SUB_MODEL: "openai/gpt-4o-mini"
