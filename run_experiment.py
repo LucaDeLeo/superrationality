@@ -13,11 +13,11 @@ import os
 
 from src.core.config import Config
 from src.core.models import ExperimentResult, StrategyRecord, GameResult, RoundSummary, Agent
-from src.data_manager import DataManager
-from src.experiment import ExperimentFlow, RoundFlow
+from src.utils.data_manager import DataManager
+from src.flows.experiment import ExperimentFlow, RoundFlow
 from src.nodes import ContextKeys
-from src.api_client import OpenRouterClient
-from src.game_logic import update_powers
+from src.core.api_client import OpenRouterClient
+from src.utils.game_logic import update_powers
 
 
 class RateLimiter:

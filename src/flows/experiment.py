@@ -16,8 +16,8 @@ from src.core.models import (
     ExperimentResult, AnonymizedGameResult
 )
 from src.core.config import Config
-from src.api_client import OpenRouterClient
-from src.game_logic import create_game_result, update_powers
+from src.core.api_client import OpenRouterClient
+from src.utils.game_logic import create_game_result, update_powers
 import random
 import statistics
 

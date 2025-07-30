@@ -9,7 +9,7 @@ import time
 from src.nodes import StrategyCollectionNode, ContextKeys
 from src.core.models import Agent, StrategyRecord
 from src.core.config import Config
-from src.api_client import OpenRouterClient
+from src.core.api_client import OpenRouterClient
 from run_experiment import RateLimiter
 
 
