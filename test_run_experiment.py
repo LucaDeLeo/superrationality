@@ -12,7 +12,7 @@ import pytest
 
 from src.core.config import Config
 from src.core.models import Agent, GameResult, StrategyRecord, RoundSummary, ExperimentResult
-from src.data_manager import DataManager
+from src.utils.data_manager import DataManager
 from run_experiment import ExperimentRunner, RateLimiter
 
 
