@@ -170,6 +170,7 @@ class ContextKeys:
     ROUND_SUMMARIES = "round_summaries"
     CONFIG = "config"
     DATA_MANAGER = "data_manager"
+    ANONYMIZATION_MANAGER = "anonymization_manager"
 
 
 def validate_context(context: Dict[str, Any], required_keys: List[str]) -> None:
