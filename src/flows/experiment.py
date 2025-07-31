@@ -5,6 +5,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
+import json
 
 from src.nodes import (
     AsyncFlow, AsyncNode, ContextKeys, 
@@ -20,6 +21,7 @@ from src.core.api_client import OpenRouterClient
 from src.flows.game_execution import GameExecutionFlow
 from src.utils.game_logic import create_game_result, update_powers
 from src.utils.data_manager import DataManager
+from src.managers.anonymization import AnonymizationManager
 import random
 import statistics
 
@@ -69,6 +71,13 @@ class RoundSummaryNode(AsyncNode):
         average_score = statistics.mean(scores) if scores else 0
         score_variance = statistics.variance(scores) if len(scores) > 1 else 0
         
+        # Score distribution
+        score_distribution = {
+            "min": min(scores) if scores else 0,
+            "max": max(scores) if scores else 0,
+            "avg": average_score
+        }
+        
         # Power distribution
         powers = [agent.power for agent in agents]
         power_distribution = {
@@ -78,20 +87,21 @@ class RoundSummaryNode(AsyncNode):
             "max": max(powers) if powers else 0
         }
         
-        # Create anonymized games
-        # Simple anonymization: shuffle agent IDs
-        anon_mapping = {}
-        shuffled_ids = list(range(len(agents)))
-        random.shuffle(shuffled_ids)
-        for i, agent in enumerate(agents):
-            anon_mapping[agent.id] = f"A{shuffled_ids[i]}"
+        # Create anonymized games using AnonymizationManager
+        anonymization_manager = context.get(ContextKeys.ANONYMIZATION_MANAGER)
+        if not anonymization_manager:
+            # Fallback to create one if not provided
+            anonymization_manager = AnonymizationManager(
+                round_num=round_num,
+                num_agents=len(agents)
+            )
         
         anonymized_games = []
         for game in games:
             anon_game = AnonymizedGameResult(
                 round=round_num,
-                anonymous_id1=anon_mapping[game.player1_id],
-                anonymous_id2=anon_mapping[game.player2_id],
+                anonymous_id1=anonymization_manager.anonymize(game.player1_id),
+                anonymous_id2=anonymization_manager.anonymize(game.player2_id),
                 action1=game.player1_action,
                 action2=game.player2_action,
                 power_ratio=game.player1_power_before / game.player2_power_before
@@ -105,6 +115,7 @@ class RoundSummaryNode(AsyncNode):
             average_score=average_score,
             score_variance=score_variance,
             power_distribution=power_distribution,
+            score_distribution=score_distribution,
             anonymized_games=anonymized_games
         )
         
@@ -209,6 +220,9 @@ class ExperimentFlow:
             ContextKeys.CONFIG: self.config
         }
         
+        # Dictionary to store all anonymization mappings
+        all_anonymization_mappings = {}
+        
         # Run experiment with API client
         async with OpenRouterClient(self.config.OPENROUTER_API_KEY) as api_client:
             self.api_client = api_client
@@ -220,6 +234,13 @@ class ExperimentFlow:
             for round_num in range(1, self.config.NUM_ROUNDS + 1):
                 logger.info(f"Starting round {round_num}")
                 context[ContextKeys.ROUND] = round_num
+                
+                # Create AnonymizationManager for this round
+                anonymization_manager = AnonymizationManager(
+                    round_num=round_num,
+                    num_agents=len(agents)
+                )
+                context[ContextKeys.ANONYMIZATION_MANAGER] = anonymization_manager
                 
                 # Run round
                 context = await round_flow.run(context)
@@ -266,6 +287,22 @@ class ExperimentFlow:
                             {"round": round_num}
                         )
                 
+                # Save anonymization mappings
+                try:
+                    mapping_path = self.data_manager.get_experiment_path() / f"anonymization_round_{round_num}.json"
+                    anonymization_manager.save_mapping(mapping_path)
+                    logger.info(f"Saved anonymization mapping for round {round_num}")
+                    
+                    # Also store in combined mappings
+                    all_anonymization_mappings[f"round_{round_num}"] = anonymization_manager.get_mapping()
+                except Exception as e:
+                    logger.error(f"Failed to save anonymization mapping for round {round_num}: {e}")
+                    self.data_manager.save_error_log(
+                        "anonymization_mapping_storage_failure",
+                        str(e),
+                        {"round": round_num}
+                    )
+                
                 # Update powers after round
                 update_powers(agents, games)
                 
@@ -297,6 +334,13 @@ class ExperimentFlow:
         try:
             self.data_manager.save_experiment_result(result)
             logger.info(f"Saved experiment results to {self.data_manager.get_experiment_path()}")
+            
+            # Save combined anonymization mappings
+            if all_anonymization_mappings:
+                mappings_file = self.data_manager.get_experiment_path() / "anonymization_mappings.json"
+                with open(mappings_file, 'w') as f:
+                    json.dump(all_anonymization_mappings, f, indent=2)
+                logger.info(f"Saved combined anonymization mappings to {mappings_file}")
         except Exception as e:
             logger.error(f"Failed to save experiment results: {e}")
             self.data_manager.save_error_log(

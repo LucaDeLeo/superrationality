@@ -98,7 +98,7 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
         previous_round = round_summaries[-1] if round_summaries else None
         
         # Format the round summary for the prompt template
-        context = format_round_summary(previous_round)
+        context = format_round_summary(previous_round, round_summaries)
         
         # Render the prompt using the template
         return STRATEGY_COLLECTION_PROMPT.render(context)
@@ -184,11 +184,22 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
         agents = context[ContextKeys.AGENTS]
         round_num = context[ContextKeys.ROUND]
         
+        # Get shuffled order from AnonymizationManager if available
+        anonymization_manager = context.get(ContextKeys.ANONYMIZATION_MANAGER)
+        if anonymization_manager:
+            # Get agents in shuffled order to prevent position-based tracking
+            shuffled_order = anonymization_manager.get_shuffled_order()
+            agents_ordered = [agents[i] for i in shuffled_order]
+            logger.info(f"Using anonymized order for strategy collection")
+        else:
+            agents_ordered = agents
+            logger.warning(f"No AnonymizationManager found, using original order")
+        
         logger.info(f"Collecting strategies for {len(agents)} agents in parallel")
         start_time = time.time()
         
         # Execute all agents in parallel using asyncio.gather
-        strategies = await self.execute_batch(agents)
+        strategies = await self.execute_batch(agents_ordered)
         
         # Filter out None values and count failures
         valid_strategies = [s for s in strategies if s is not None]
