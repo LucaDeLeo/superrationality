@@ -12,6 +12,7 @@ from src.nodes import (
     StrategyCollectionNode, SubagentDecisionNode,
     validate_context
 )
+from src.nodes.analysis import AnalysisNode
 from src.core.models import (
     Agent, GameResult, StrategyRecord, RoundSummary, 
     ExperimentResult, AnonymizedGameResult
@@ -313,15 +314,39 @@ class ExperimentFlow:
                 
                 logger.info(f"Completed round {round_num}")
         
+        # Run transcript analysis after all rounds complete
+        logger.info("Running transcript analysis...")
+        try:
+            # Add data manager to context for analysis
+            context[ContextKeys.DATA_MANAGER] = self.data_manager
+            
+            # Create and run analysis node
+            analysis_node = AnalysisNode()
+            context = await analysis_node.execute(context)
+            
+            # Extract analysis results
+            transcript_analysis = context.get("transcript_analysis", {})
+            acausal_analysis = transcript_analysis.get("acausal_analysis", {})
+            
+            logger.info(f"Transcript analysis completed. Analyzed {acausal_analysis.get('total_strategies_analyzed', 0)} strategies")
+        except Exception as e:
+            logger.error(f"Transcript analysis failed: {e}")
+            self.data_manager.save_error_log(
+                "transcript_analysis_failure",
+                str(e),
+                {"experiment_id": self.experiment_id}
+            )
+            acausal_analysis = {}
+        
         # Finalize experiment result
         result.end_time = datetime.now().isoformat()
         result.round_summaries = context[ContextKeys.ROUND_SUMMARIES]
         
-        # Calculate acausal indicators (simplified for now)
+        # Calculate acausal indicators using analysis results
         result.acausal_indicators = {
-            "identity_reasoning_frequency": 0.0,  # Would analyze strategy texts
+            "identity_reasoning_frequency": acausal_analysis.get("identity_reasoning_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
             "cooperation_despite_asymmetry": self._calculate_asymmetric_cooperation(result),
-            "surprise_at_defection": 0.0,  # Would analyze strategy reasoning
+            "surprise_at_defection": acausal_analysis.get("surprise_at_defection_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
             "strategy_convergence": self._calculate_strategy_convergence(result)
         }
         
