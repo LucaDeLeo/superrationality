@@ -137,8 +137,11 @@ class RoundFlow(AsyncFlow):
         # its own internal nodes if needed in future implementations.
         self.add_node(RoundSummaryNode())
         
-        # Store GameExecutionFlow instance for direct execution
-        self.game_execution_flow = GameExecutionFlow()
+        # Create SubagentDecisionNode for game decisions
+        self.subagent_node = SubagentDecisionNode(api_client, config)
+        
+        # Store GameExecutionFlow instance with SubagentDecisionNode
+        self.game_execution_flow = GameExecutionFlow(self.subagent_node)
     
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Run all nodes in sequence with GameExecutionFlow integrated.
