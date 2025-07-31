@@ -1,11 +1,14 @@
 """Game execution flow for round-robin tournament."""
 
 import logging
+import asyncio
 from typing import Dict, List, Tuple, Any
 from datetime import datetime
 
 from src.nodes.base import AsyncFlow
+from src.nodes.subagent_decision import SubagentDecisionNode
 from src.core.models import Agent, GameResult
+from src.utils.game_logic import calculate_payoffs, update_powers
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +16,14 @@ logger = logging.getLogger(__name__)
 class GameExecutionFlow(AsyncFlow):
     """Execute round-robin tournament games for all agent pairs."""
     
-    def __init__(self):
-        """Initialize GameExecutionFlow."""
+    def __init__(self, subagent_node: SubagentDecisionNode = None):
+        """Initialize GameExecutionFlow.
+        
+        Args:
+            subagent_node: SubagentDecisionNode instance for making decisions
+        """
         super().__init__()
+        self.subagent_node = subagent_node
         
     def generate_round_matchups(self, agents: List[Agent]) -> List[Tuple[int, int]]:
         """Generate all unique agent pairs for round-robin tournament.
@@ -55,18 +63,18 @@ class GameExecutionFlow(AsyncFlow):
         logger.info(f"Generated {len(matchups)} matchups for round-robin tournament")
         return matchups
     
-    async def play_game(self, agent1: Agent, agent2: Agent, round_num: int, game_num: int) -> GameResult:
+    async def play_game(self, agent1: Agent, agent2: Agent, round_num: int, game_num: int, game_history: List[GameResult]) -> GameResult:
         """Play a single game between two agents.
         
-        This method currently returns placeholder results. In future stories,
-        this will integrate with the SubagentDecisionNode to get actual
-        agent decisions based on their strategies.
+        Uses subagent decisions based on agent strategies to determine actions,
+        then calculates payoffs based on power levels.
         
         Args:
             agent1: First agent participating in the game
             agent2: Second agent participating in the game
             round_num: Current round number (1-10)
             game_num: Game number within round (1-45 for 10 agents)
+            game_history: History of games played so far
             
         Returns:
             GameResult object with game outcome, including:
@@ -74,17 +82,31 @@ class GameExecutionFlow(AsyncFlow):
             - player actions and payoffs
             - power levels before the game
         """
-        # For now, return placeholder game results
-        # Actual implementation will be added in future stories
         game_id = f"r{round_num}_g{game_num}"
         
-        # Placeholder actions - will be replaced with actual decision logic
-        player1_action = "COOPERATE"
-        player2_action = "COOPERATE"
+        # Record power levels before the game
+        player1_power_before = agent1.power
+        player2_power_before = agent2.power
         
-        # Placeholder payoffs - will be replaced with actual calculation
-        player1_payoff = 3.0
-        player2_payoff = 3.0
+        # Get strategies from agents
+        strategy1 = agent1.strategy
+        strategy2 = agent2.strategy
+        
+        # Use subagent to make decisions in parallel if available
+        if self.subagent_node:
+            player1_action, player2_action = await asyncio.gather(
+                self.subagent_node.make_decision(agent1, agent2, strategy1, game_history),
+                self.subagent_node.make_decision(agent2, agent1, strategy2, game_history)
+            )
+        else:
+            # Fallback to placeholder actions if no subagent node
+            player1_action = "COOPERATE"
+            player2_action = "COOPERATE"
+        
+        # Calculate payoffs using game logic
+        player1_payoff, player2_payoff = calculate_payoffs(
+            agent1, agent2, player1_action, player2_action
+        )
         
         return GameResult(
             game_id=game_id,
@@ -95,8 +117,8 @@ class GameExecutionFlow(AsyncFlow):
             player2_action=player2_action,
             player1_payoff=player1_payoff,
             player2_payoff=player2_payoff,
-            player1_power_before=agent1.power,
-            player2_power_before=agent2.power,
+            player1_power_before=player1_power_before,
+            player2_power_before=player2_power_before,
             timestamp=datetime.now().isoformat()
         )
     
@@ -128,15 +150,21 @@ class GameExecutionFlow(AsyncFlow):
         # Create agent lookup for efficient access
         agent_lookup = {agent.id: agent for agent in agents}
         
+        # Get game history from context (may be empty for first round)
+        game_history = context.get("game_history", [])
+        
         # Execute games sequentially
         games = []
         for game_num, (agent1_id, agent2_id) in enumerate(matchups, 1):
             agent1 = agent_lookup[agent1_id]
             agent2 = agent_lookup[agent2_id]
             
-            # Play the game
-            game = await self.play_game(agent1, agent2, round_num, game_num)
+            # Play the game with current history
+            game = await self.play_game(agent1, agent2, round_num, game_num, game_history)
             games.append(game)
+            
+            # Add this game to history for future games
+            game_history.append(game)
             
             # Log progress
             if game_num % 10 == 0:
@@ -144,6 +172,10 @@ class GameExecutionFlow(AsyncFlow):
         
         logger.info(f"Completed all {len(games)} games for round {round_num}")
         
-        # Update context with games
+        # Note: Power updates are handled at the experiment level after the round
+        # This ensures consistent power levels during the round for testing
+        
+        # Update context with games and updated history
         context["games"] = games
+        context["game_history"] = game_history
         return context

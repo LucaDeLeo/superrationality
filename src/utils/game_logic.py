@@ -82,6 +82,45 @@ def update_powers(agents: List[Agent], games: List[GameResult]) -> None:
         agent.total_score += score
 
 
+def calculate_payoff(agent1_power: float, agent2_power: float, action1: str, action2: str) -> float:
+    """Calculate payoff for agent1 (wrapper for compatibility).
+    
+    Args:
+        agent1_power: Power level of agent1
+        agent2_power: Power level of agent2
+        action1: Agent1's action
+        action2: Agent2's action
+        
+    Returns:
+        Payoff for agent1
+    """
+    # Get base payoff from matrix
+    base_payoff, _ = PAYOFF_MATRIX[(action1, action2)]
+    
+    # Apply power multiplier
+    return base_payoff * (agent2_power / agent1_power)
+
+
+def update_power(current_power: float, won: bool) -> float:
+    """Update agent power based on win/loss (wrapper for compatibility).
+    
+    Args:
+        current_power: Current power level
+        won: Whether agent won (had higher payoff)
+        
+    Returns:
+        Updated power level
+    """
+    # Simple 5% adjustment based on win/loss
+    if won:
+        new_power = current_power * 1.05
+    else:
+        new_power = current_power * 0.95
+    
+    # Apply bounds
+    return max(50.0, min(150.0, new_power))
+
+
 def create_game_result(
     round_num: int,
     game_num: int,
