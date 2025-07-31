@@ -1,7 +1,7 @@
 """Prompt template system for the acausal cooperation experiment."""
 
 import re
-from typing import Dict, Set, Any, Optional
+from typing import Dict, Set, Any, Optional, List
 from dataclasses import dataclass
 
 
