@@ -378,6 +378,51 @@ class ExperimentFlow:
             )
             statistical_analysis = {}
         
+        # Run unified report generation after all analyses
+        try:
+            from src.nodes.report_generator import ReportGeneratorNode
+            
+            # Configure report generator
+            report_config = {
+                "acausal_weights": {
+                    "identity_reasoning": 0.3,
+                    "cooperation_rate": 0.25,
+                    "strategy_convergence": 0.25,
+                    "cooperation_trend": 0.2
+                },
+                "enabled_sections": {
+                    "executive_summary": True,
+                    "detailed_findings": True,
+                    "visualizations": True,
+                    "latex_sections": True,
+                    "correlation_analysis": True
+                }
+            }
+            
+            # Create and run report generator node
+            report_generator = ReportGeneratorNode(config=report_config)
+            context = await report_generator.execute(context)
+            
+            # Extract report results
+            unified_report = context.get("unified_report", {})
+            logger.info("Unified report generation completed")
+            
+            # Log report file locations
+            results_path = self.data_manager.get_experiment_path()
+            logger.info(f"\nReports generated:")
+            logger.info(f"- Markdown: {results_path}/experiment_report.md")
+            logger.info(f"- LaTeX: {results_path}/paper_sections.tex")
+            logger.info(f"- Visualizations: {results_path}/visualization_data.json")
+            logger.info(f"- Full Report: {results_path}/unified_report.json")
+        except Exception as e:
+            logger.error(f"Report generation failed: {e}")
+            self.data_manager.save_error_log(
+                "report_generation_failure",
+                str(e),
+                {"experiment_id": self.experiment_id}
+            )
+            unified_report = {}
+        
         # Finalize experiment result
         result.end_time = datetime.now().isoformat()
         result.round_summaries = context[ContextKeys.ROUND_SUMMARIES]
