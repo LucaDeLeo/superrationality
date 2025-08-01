@@ -358,6 +358,26 @@ class ExperimentFlow:
             )
             similarity_analysis = {}
         
+        # Run statistical analysis
+        try:
+            from src.nodes.statistics import StatisticsNode
+            
+            # Create and run statistics node
+            statistics_node = StatisticsNode()
+            context = await statistics_node.execute(context)
+            
+            # Extract statistical results
+            statistical_analysis = context.get("statistical_analysis", {})
+            logger.info("Statistical analysis completed")
+        except Exception as e:
+            logger.error(f"Statistical analysis failed: {e}")
+            self.data_manager.save_error_log(
+                "statistical_analysis_failure",
+                str(e),
+                {"experiment_id": self.experiment_id}
+            )
+            statistical_analysis = {}
+        
         # Finalize experiment result
         result.end_time = datetime.now().isoformat()
         result.round_summaries = context[ContextKeys.ROUND_SUMMARIES]
@@ -370,11 +390,24 @@ class ExperimentFlow:
             if "strategy_convergence" in convergence_metrics:
                 strategy_convergence = convergence_metrics["strategy_convergence"]
         
+        # Extract key statistical metrics if available
+        experiment_summary = {}
+        if statistical_analysis and "statistical_analysis" in statistical_analysis:
+            stats = statistical_analysis["statistical_analysis"]
+            experiment_summary = stats.get("experiment_summary", {})
+        
         result.acausal_indicators = {
             "identity_reasoning_frequency": acausal_analysis.get("identity_reasoning_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
             "cooperation_despite_asymmetry": self._calculate_asymmetric_cooperation(result),
             "surprise_at_defection": acausal_analysis.get("surprise_at_defection_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
-            "strategy_convergence": strategy_convergence
+            "strategy_convergence": strategy_convergence,
+            # Add statistical metrics
+            "overall_cooperation_rate": experiment_summary.get("overall_cooperation_rate", 0.0),
+            "cooperation_improvement": experiment_summary.get("cooperation_improvement", 0.0),
+            "dominant_outcome": experiment_summary.get("dominant_outcome", "unknown"),
+            "power_distribution_stability": experiment_summary.get("power_distribution_stability", "unknown"),
+            "cooperation_trend_significant": experiment_summary.get("statistical_significance", {}).get("cooperation_trend_significant", False),
+            "anomaly_count": experiment_summary.get("anomaly_summary", {}).get("total_anomalies", 0)
         }
         
         # Estimate cost (rough estimates)
