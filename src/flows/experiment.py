@@ -338,16 +338,43 @@ class ExperimentFlow:
             )
             acausal_analysis = {}
         
+        # Run similarity analysis
+        try:
+            from src.nodes.similarity import SimilarityNode
+            
+            # Create and run similarity node
+            similarity_node = SimilarityNode()
+            context = await similarity_node.execute(context)
+            
+            # Extract similarity results
+            similarity_analysis = context.get("similarity_analysis", {})
+            logger.info("Strategy similarity analysis completed")
+        except Exception as e:
+            logger.error(f"Similarity analysis failed: {e}")
+            self.data_manager.save_error_log(
+                "similarity_analysis_failure",
+                str(e),
+                {"experiment_id": self.experiment_id}
+            )
+            similarity_analysis = {}
+        
         # Finalize experiment result
         result.end_time = datetime.now().isoformat()
         result.round_summaries = context[ContextKeys.ROUND_SUMMARIES]
         
         # Calculate acausal indicators using analysis results
+        # Extract strategy convergence from similarity analysis if available
+        strategy_convergence = self._calculate_strategy_convergence(result)
+        if similarity_analysis and "strategy_similarity_analysis" in similarity_analysis:
+            convergence_metrics = similarity_analysis["strategy_similarity_analysis"].get("convergence_metrics", {})
+            if "strategy_convergence" in convergence_metrics:
+                strategy_convergence = convergence_metrics["strategy_convergence"]
+        
         result.acausal_indicators = {
             "identity_reasoning_frequency": acausal_analysis.get("identity_reasoning_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
             "cooperation_despite_asymmetry": self._calculate_asymmetric_cooperation(result),
             "surprise_at_defection": acausal_analysis.get("surprise_at_defection_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
-            "strategy_convergence": self._calculate_strategy_convergence(result)
+            "strategy_convergence": strategy_convergence
         }
         
         # Estimate cost (rough estimates)
