@@ -86,12 +86,24 @@ class DataLoader:
     
     def get_experiment(self, experiment_id: str) -> Optional[dict]:
         """Get detailed information about a specific experiment."""
+        # Validate experiment_id to prevent directory traversal
+        if not experiment_id or '..' in experiment_id or '/' in experiment_id or '\\' in experiment_id:
+            return None
+            
         cache_key = f"experiment_{experiment_id}"
         cached = self._get_from_cache(cache_key)
         if cached is not None:
             return cached
         
         exp_path = self.results_path / experiment_id
+        # Ensure the path is within results directory
+        try:
+            exp_path = exp_path.resolve()
+            if not exp_path.is_relative_to(self.results_path.resolve()):
+                return None
+        except (ValueError, RuntimeError):
+            return None
+            
         if not exp_path.exists():
             return None
         
@@ -137,12 +149,24 @@ class DataLoader:
     
     def get_round_data(self, experiment_id: str, round_num: int) -> Optional[dict]:
         """Get data for a specific round."""
+        # Validate experiment_id to prevent directory traversal
+        if not experiment_id or '..' in experiment_id or '/' in experiment_id or '\\' in experiment_id:
+            return None
+            
         cache_key = f"round_{experiment_id}_{round_num}"
         cached = self._get_from_cache(cache_key)
         if cached is not None:
             return cached
         
         round_path = self.results_path / experiment_id / "rounds" / f"round_{round_num}.json"
+        # Ensure the path is within results directory
+        try:
+            round_path = round_path.resolve()
+            if not round_path.is_relative_to(self.results_path.resolve()):
+                return None
+        except (ValueError, RuntimeError):
+            return None
+            
         if not round_path.exists():
             return None
         
