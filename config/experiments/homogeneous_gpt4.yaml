@@ -1,0 +1,26 @@
+# Homogeneous GPT-4 Experiment
+# Tests acausal cooperation with identical GPT-4 agents
+
+name: "Homogeneous GPT-4"
+description: "Baseline experiment with 10 identical GPT-4 agents to test pure acausal cooperation"
+
+model_distribution:
+  gpt-4o: 10
+
+rounds: 10
+games_per_round: 45
+
+parameters:
+  collect_reasoning: true
+  save_transcripts: true
+  anonymize_agents: true
+
+analysis:
+  track_cooperation_evolution: true
+  identify_reasoning_patterns: true
+  measure_strategy_convergence: true
+
+expected_outcomes:
+  - High cooperation rate (>90%)
+  - Strong identity recognition
+  - Consistent strategies across agents

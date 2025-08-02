@@ -16,7 +16,7 @@ class Config:
     NUM_ROUNDS: int = 10
 
     # Model configuration
-    MAIN_MODEL: str = "google/gemini-2.0-flash-exp:free"
+    MAIN_MODEL: str = "google/gemini-2.5-flash"
     SUB_MODEL: str = "openai/GPT-4.1-nano"
 
     # API configuration

@@ -1381,7 +1381,7 @@ Create YAML configuration files for different experiment variants:
 experiment_name: "baseline"
 num_agents: 10
 num_rounds: 10
-strategy_model: "google/gemini-2.0-flash-exp:free"
+strategy_model: "google/gemini-2.5-flash"
 decision_model: "openai/GPT-4.1-nano"
 temperature: 0.7
 
@@ -1389,7 +1389,7 @@ temperature: 0.7
 experiment_name: "high_temperature"
 num_agents: 10
 num_rounds: 10
-strategy_model: "google/gemini-2.0-flash-exp:free"
+strategy_model: "google/gemini-2.5-flash"
 decision_model: "openai/GPT-4.1-nano"
 temperature: 1.0
 
@@ -1397,7 +1397,7 @@ temperature: 1.0
 experiment_name: "low_temperature"
 num_agents: 10
 num_rounds: 10
-strategy_model: "google/gemini-2.0-flash-exp:free"
+strategy_model: "google/gemini-2.5-flash"
 decision_model: "openai/GPT-4.1-nano"
 temperature: 0.3
 ```
@@ -1526,6 +1526,8 @@ pyyaml==6.0
 pandas==2.1.0
 pytest==7.4.0
 pytest-asyncio==0.21.0
+scikit-learn==1.3.0
+scipy==1.11.0
 ```
 
 ### Simple CI for Testing
@@ -1548,3 +1550,203 @@ jobs:
         pip install -r requirements.txt
         pytest test_experiment.py -v
 ```
+
+## Epic 6: Multi-Model Experiment Architecture
+
+### Overview
+
+Epic 6 extends the experiment framework to support heterogeneous model populations, enabling cross-model cooperation studies. The architecture maintains backward compatibility while adding flexible model configuration and cross-model analysis capabilities.
+
+### Change Log Addition
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2025-08-02 | 2.0 | Added Epic 6 multi-model support | System |
+
+### Multi-Model Architecture Components
+
+#### ConfigManager
+
+**Responsibility:** Centralized management of model configurations and experiment templates
+
+**Key Interfaces:**
+- `load_models() -> Dict[str, ModelConfig]` - Load model registry
+- `get_model(name: str) -> ModelConfig` - Retrieve model configuration
+- `load_experiment(path: str) -> ExperimentConfig` - Load experiment template
+- `create_custom_experiment(model_dist: Dict[str, int]) -> ExperimentConfig` - Create custom experiment
+
+**Dependencies:** YAML configuration files, model registry
+
+**Technology Stack:** Python dataclasses, PyYAML
+
+#### ModelAdapter (Base Class)
+
+**Responsibility:** Unified interface for all AI model interactions
+
+**Key Interfaces:**
+- `async def get_completion(messages: list, **kwargs) -> ModelResponse` - Get model response
+- `async def get_strategy(prompt: str, context: dict) -> Tuple[str, int, int]` - Legacy compatibility
+- `_create_rate_limiter() -> Throttler` - Per-model rate limiting
+
+**Dependencies:** Model-specific API clients, rate limiters
+
+**Technology Stack:** Python ABC, asyncio-throttle
+
+#### OpenRouterAdapter
+
+**Responsibility:** Universal adapter for all OpenRouter-supported models
+
+**Key Interfaces:**
+- `async def _make_request(messages: list, **kwargs) -> dict` - OpenRouter API call
+- `_parse_response(raw: dict) -> ModelResponse` - Standardize response format
+
+**Dependencies:** OpenRouter API, aiohttp
+
+**Technology Stack:** Async HTTP client, OpenRouter API v1
+
+#### ModelAdapterFactory
+
+**Responsibility:** Create appropriate adapters based on model configuration
+
+**Key Interfaces:**
+- `create_adapter(model_config: ModelConfig) -> BaseModelAdapter` - Factory method
+- `register_adapter(name: str, adapter_class: Type) -> None` - Extensibility
+
+**Dependencies:** Model adapters, configuration
+
+**Technology Stack:** Factory pattern, dynamic imports
+
+#### MultiModelStrategyCollectionNode
+
+**Responsibility:** Collect strategies from heterogeneous agent populations
+
+**Key Interfaces:**
+- `async def collect_strategies(agents: List[Agent]) -> List[StrategyRecord]` - Parallel collection
+- `_initialize_adapters() -> None` - Setup model-specific adapters
+
+**Dependencies:** ModelAdapterFactory, various model adapters
+
+**Technology Stack:** AsyncParallelBatchNode, concurrent execution
+
+#### CrossModelAnalyzer
+
+**Responsibility:** Analyze cooperation patterns across model boundaries
+
+**Key Interfaces:**
+- `calculate_cooperation_matrix(games: List[GameResult]) -> pd.DataFrame` - NxN cooperation rates
+- `detect_in_group_bias(games: List[GameResult]) -> Dict[str, float]` - Same-model preference
+- `analyze_model_coalitions(data: TournamentData) -> CoalitionReport` - Coalition detection
+
+**Dependencies:** pandas, numpy, scipy for statistical analysis
+
+**Technology Stack:** Statistical analysis, graph algorithms
+
+### Configuration Schema
+
+#### Model Registry (`config/models.yaml`)
+
+```yaml
+models:
+  model-name:
+    provider: string          # openai, anthropic, google, etc.
+    model_id: string         # Full model identifier for API
+    display_name: string     # Human-readable name
+    category: string         # large, medium, small, reasoning
+    capabilities: list       # Features: reasoning, coding, multimodal
+    parameters:
+      temperature: float     # Default temperature
+      max_tokens: int       # Default max tokens
+    rate_limit:
+      requests_per_minute: int
+      tokens_per_minute: int
+    estimated_cost:
+      input_per_1k: float   # USD per 1000 input tokens
+      output_per_1k: float  # USD per 1000 output tokens
+```
+
+#### Experiment Templates (`config/experiments/*.yaml`)
+
+```yaml
+name: string                 # Experiment name
+description: string          # Detailed description
+model_distribution:          # Model type -> agent count
+  model-name: int
+rounds: int                  # Number of rounds
+games_per_round: int        # Games per round
+parameters:                  # Optional parameters
+  collect_reasoning: bool
+  save_transcripts: bool
+analysis:                    # Analysis flags
+  track_cross_model: bool
+  cooperation_matrix: bool
+```
+
+### Data Flow for Multi-Model Experiments
+
+```mermaid
+graph TB
+    subgraph "Configuration"
+        A[models.yaml] --> B[ConfigManager]
+        C[experiment.yaml] --> B
+    end
+    
+    subgraph "Initialization"
+        B --> D[ModelAdapterFactory]
+        D --> E[Model Adapters]
+        B --> F[Agent Creation]
+    end
+    
+    subgraph "Execution"
+        F --> G[MultiModelStrategyCollection]
+        E --> G
+        G --> H[GameExecution]
+        H --> I[SubagentDecisions]
+    end
+    
+    subgraph "Analysis"
+        H --> J[CrossModelAnalyzer]
+        J --> K[Cooperation Matrix]
+        J --> L[In-Group Bias]
+        J --> M[Coalition Detection]
+    end
+```
+
+### Extended Agent Model
+
+```python
+@dataclass
+class Agent:
+    # Existing fields
+    id: int
+    name: str
+    is_main_agent: bool
+    power: float
+    total_score: float
+    metadata: Dict[str, Any]
+    
+    # New fields for Epic 6
+    model_type: str  # Model identifier (e.g., "gpt-4o")
+    model_config: ModelConfig  # Full model configuration
+```
+
+### API Compatibility
+
+The multi-model system maintains full backward compatibility:
+
+1. **Single-model experiments** work unchanged
+2. **Existing analysis** applies to multi-model data
+3. **New analysis** layers on top without breaking changes
+
+### Performance Considerations
+
+1. **Concurrent API Calls**: Different models have different rate limits
+2. **Cost Optimization**: Track per-model costs in real-time
+3. **Retry Strategy**: Model-specific retry logic with exponential backoff
+4. **Caching**: Optional response caching for expensive models
+
+### Security Considerations
+
+1. **API Key Management**: Per-provider API keys via environment variables
+2. **Rate Limit Protection**: Automatic throttling prevents API bans
+3. **Cost Limits**: Configurable spending limits per experiment
+4. **Audit Logging**: Track all model interactions for compliance

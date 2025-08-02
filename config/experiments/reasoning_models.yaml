@@ -1,0 +1,32 @@
+# Reasoning-Focused Models
+# Tests models specifically designed for complex reasoning
+
+name: "Reasoning Models Comparison"
+description: "Compare reasoning-optimized models across providers"
+
+model_distribution:
+  o1: 3                    # OpenAI reasoning model
+  claude-4-opus: 3         # Claude with extended thinking
+  deepseek-r1: 2          # DeepSeek reasoning model
+  gemini-2.5-pro: 2       # Gemini with Deep Think mode
+
+rounds: 10
+games_per_round: 45
+
+parameters:
+  collect_reasoning: true
+  save_transcripts: true
+  extended_thinking_time: true
+  capture_reasoning_chains: true
+
+analysis:
+  reasoning_depth_analysis: true
+  strategy_sophistication_scoring: true
+  meta_reasoning_detection: true
+  acausal_reasoning_quality: true
+
+expected_outcomes:
+  - More sophisticated strategies
+  - Explicit acausal reasoning
+  - Potential for novel cooperation mechanisms
+  - Higher computational cost but deeper insights

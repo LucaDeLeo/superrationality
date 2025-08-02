@@ -5,5 +5,5 @@ NUM_AGENTS: 10
 NUM_ROUNDS: 10
 
 # Model configuration
-MAIN_MODEL: "google/gemini-2.0-flash-exp:free"
+MAIN_MODEL: "google/gemini-2.5-flash"
 SUB_MODEL: "openai/GPT-4.1-nano"

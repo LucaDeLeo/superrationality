@@ -1,0 +1,30 @@
+# Majority-Minority Dynamics
+# Tests how a minority model behaves in a majority environment
+
+name: "Majority-Minority GPT/Claude"
+description: "7 GPT-4 agents with 3 Claude-4 agents to test minority dynamics"
+
+model_distribution:
+  gpt-4o: 7
+  claude-4-opus: 3
+
+rounds: 10
+games_per_round: 45
+
+parameters:
+  collect_reasoning: true
+  save_transcripts: true
+  anonymize_agents: true
+  track_power_dynamics: true
+
+analysis:
+  minority_behavior_analysis: true
+  majority_influence_tracking: true
+  cooperation_by_group_size: true
+  adaptation_over_time: true
+
+expected_outcomes:
+  - Minority may adapt to majority behavior
+  - Possible defensive strategies from minority
+  - Majority may show stronger in-group cooperation
+  - Power dynamics may shift over rounds

@@ -1,0 +1,29 @@
+# Balanced GPT-4/Claude-4 Mix
+# Tests cross-model cooperation between two leading AI architectures
+
+name: "Balanced GPT-4/Claude-4"
+description: "50/50 split between GPT-4 and Claude-4 to test cross-model cooperation"
+
+model_distribution:
+  gpt-4o: 5
+  claude-4-opus: 5
+
+rounds: 10
+games_per_round: 45
+
+parameters:
+  collect_reasoning: true
+  save_transcripts: true
+  anonymize_agents: true
+  track_model_interactions: true
+
+analysis:
+  track_cross_model: true
+  coalition_detection: true
+  in_group_bias_analysis: true
+  cooperation_matrix: true
+
+expected_outcomes:
+  - Possible in-group bias (higher cooperation within same model)
+  - Different reasoning approaches between models
+  - Potential for cross-model cooperation based on shared understanding

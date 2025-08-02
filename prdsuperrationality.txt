@@ -13,7 +13,7 @@ A single Python project using the provided node framework to orchestrate API cal
 # Core experiment parameters
 NUM_AGENTS = 10
 NUM_ROUNDS = 10
-MAIN_MODEL = "google/gemini-2.0-flash-exp:free"
+MAIN_MODEL = "google/gemini-2.5-flash"
 SUB_MODEL = "openai/GPT-4.1-nano"
 ```
 

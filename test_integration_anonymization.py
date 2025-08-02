@@ -55,7 +55,7 @@ async def test_integration():
     context = await summary_node.execute(context)
     
     round1_summary = context[ContextKeys.ROUND_SUMMARIES][0]
-    print(f"  Cooperation rate: {round1_summary.cooperation_rate:.1f}%")
+    print(f"  Cooperation rate: {round1_summary.cooperation_rate:.1%}")
     print(f"  Anonymized games:")
     for game in round1_summary.anonymized_games[:2]:
         print(f"    {game.anonymous_id1} vs {game.anonymous_id2}: {game.action1}/{game.action2}")
@@ -81,7 +81,7 @@ async def test_integration():
     context = await summary_node.execute(context)
     round2_summary = context[ContextKeys.ROUND_SUMMARIES][1]
     
-    print(f"  Cooperation rate: {round2_summary.cooperation_rate:.1f}%")
+    print(f"  Cooperation rate: {round2_summary.cooperation_rate:.1%}")
     print(f"  Anonymized games:")
     for game in round2_summary.anonymized_games:
         print(f"    {game.anonymous_id1} vs {game.anonymous_id2}: {game.action1}/{game.action2}")

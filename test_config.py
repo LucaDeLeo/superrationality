@@ -37,7 +37,7 @@ class TestConfig:
 
         assert config.NUM_AGENTS == 10
         assert config.NUM_ROUNDS == 10
-        assert config.MAIN_MODEL == "google/gemini-2.0-flash-exp:free"
+        assert config.MAIN_MODEL == "google/gemini-2.5-flash"
         assert config.SUB_MODEL == "openai/GPT-4.1-nano"
 
     def test_parameter_validation_invalid_num_agents(self):
