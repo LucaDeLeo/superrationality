@@ -77,3 +77,4 @@ coverage.xml
 # Logs
 *.log
 logs/
+experiment_errors.log
