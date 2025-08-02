@@ -1,0 +1,27 @@
+# Asymmetric Model Scenarios
+# Majority-minority and singleton configurations
+
+scenarios:
+  - name: "majority_7_3_gpt"
+    description: "GPT-4 majority with Claude minority"
+    model_distribution:
+      "openai/gpt-4": 7
+      "anthropic/claude-3-sonnet-20240229": 3
+      
+  - name: "majority_8_2_claude"
+    description: "Claude majority with Gemini minority"
+    model_distribution:
+      "anthropic/claude-3-sonnet-20240229": 8
+      "google/gemini-pro": 2
+      
+  - name: "singleton_9_1_gpt"
+    description: "Single GPT-4 agent among Claude agents"
+    model_distribution:
+      "openai/gpt-4": 1
+      "anthropic/claude-3-sonnet-20240229": 9
+      
+  - name: "singleton_9_1_gemini"
+    description: "Single Gemini agent among GPT-4 agents"
+    model_distribution:
+      "google/gemini-pro": 1
+      "openai/gpt-4": 9

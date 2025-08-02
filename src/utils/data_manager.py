@@ -14,22 +14,30 @@ from src.core.models import StrategyRecord, GameResult, RoundSummary, Experiment
 class DataManager:
     """Handles all file I/O operations for experiment data."""
     
-    def __init__(self, base_path: str = "results"):
+    def __init__(self, base_path: str = "results", scenario_name: Optional[str] = None):
         """Initialize DataManager with experiment directory structure.
         
         Args:
             base_path: Base directory for all experiment results
+            scenario_name: Optional scenario name for segmented storage
         """
         self.base_path = Path(base_path)
         self.base_path.mkdir(exist_ok=True)
         self.experiment_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        self.experiment_path = self.base_path / self.experiment_id
+        self.scenario_name = scenario_name
+        
+        # Create scenario-specific path if provided
+        if scenario_name:
+            self.experiment_path = self.base_path / "scenarios" / scenario_name / self.experiment_id
+        else:
+            self.experiment_path = self.base_path / self.experiment_id
+            
         self._setup_directories()
         
     def _setup_directories(self):
         """Create experiment directory structure."""
-        self.experiment_path.mkdir(exist_ok=True)
-        (self.experiment_path / "rounds").mkdir(exist_ok=True)
+        self.experiment_path.mkdir(parents=True, exist_ok=True)
+        (self.experiment_path / "rounds").mkdir(parents=True, exist_ok=True)
         
     def _write_json(self, path: Path, data: Any):
         """Write JSON data atomically to prevent corruption.
@@ -60,7 +68,12 @@ class DataManager:
             round_num: Round number (1-10)
             strategies: List of strategy records from agents
         """
-        path = self.experiment_path / "rounds" / f"strategies_r{round_num}.json"
+        # Include scenario in filename if present
+        if self.scenario_name:
+            filename = f"strategies_{self.scenario_name}_r{round_num}.json"
+        else:
+            filename = f"strategies_r{round_num}.json"
+        path = self.experiment_path / "rounds" / filename
         
         # Convert to Epic 2 format
         formatted_strategies = []
@@ -92,7 +105,12 @@ class DataManager:
             round_num: Round number (1-10)
             games: List of game results from the round
         """
-        path = self.experiment_path / "rounds" / f"games_r{round_num}.json"
+        # Include scenario in filename if present
+        if self.scenario_name:
+            filename = f"games_{self.scenario_name}_r{round_num}.json"
+        else:
+            filename = f"games_r{round_num}.json"
+        path = self.experiment_path / "rounds" / filename
         data = {
             "round": round_num,
             "timestamp": datetime.now().isoformat(),
@@ -106,7 +124,12 @@ class DataManager:
         Args:
             round_summary: Summary statistics for the round
         """
-        path = self.experiment_path / "rounds" / f"summary_r{round_summary.round}.json"
+        # Include scenario in filename if present
+        if self.scenario_name:
+            filename = f"summary_{self.scenario_name}_r{round_summary.round}.json"
+        else:
+            filename = f"summary_r{round_summary.round}.json"
+        path = self.experiment_path / "rounds" / filename
         data = asdict(round_summary)
         data["timestamp"] = datetime.now().isoformat()
         self._write_json(path, data)
@@ -117,8 +140,18 @@ class DataManager:
         Args:
             result: Complete experiment results
         """
-        path = self.experiment_path / "experiment_results.json"
+        # Include scenario in filename if present
+        if self.scenario_name:
+            filename = f"experiment_results_{self.scenario_name}.json"
+        else:
+            filename = "experiment_results.json"
+        path = self.experiment_path / filename
         data = asdict(result)
+        
+        # Add scenario metadata if present
+        if self.scenario_name:
+            data["scenario_name"] = self.scenario_name
+            
         self._write_json(path, data)
         
     def save_error_log(self, error_type: str, error_msg: str, context: Optional[Dict] = None):
@@ -164,3 +197,57 @@ class DataManager:
             Path to experiment directory
         """
         return self.experiment_path
+    
+    def get_scenario_experiments(self, scenario_name: str) -> List[Path]:
+        """
+        Get all experiment paths for a specific scenario.
+        
+        Args:
+            scenario_name: Name of the scenario
+            
+        Returns:
+            List of paths to experiment directories
+        """
+        scenario_path = self.base_path / "scenarios" / scenario_name
+        if not scenario_path.exists():
+            return []
+        
+        experiments = []
+        for exp_dir in scenario_path.iterdir():
+            if exp_dir.is_dir() and exp_dir.name.startswith("exp_"):
+                experiments.append(exp_dir)
+        
+        return sorted(experiments)
+    
+    def load_scenario_data(self, scenario_name: str, data_type: str = "experiment_results") -> List[Dict]:
+        """
+        Load all data of a specific type for a scenario.
+        
+        Args:
+            scenario_name: Name of the scenario
+            data_type: Type of data to load (e.g., "experiment_results", "round_summaries")
+            
+        Returns:
+            List of loaded data dictionaries
+        """
+        experiments = self.get_scenario_experiments(scenario_name)
+        all_data = []
+        
+        for exp_path in experiments:
+            if data_type == "experiment_results":
+                result_files = list(exp_path.glob("experiment_results*.json"))
+                if result_files:
+                    with open(result_files[0], 'r') as f:
+                        data = json.load(f)
+                        data["experiment_path"] = str(exp_path)
+                        all_data.append(data)
+            elif data_type == "round_summaries":
+                rounds_path = exp_path / "rounds"
+                if rounds_path.exists():
+                    for summary_file in rounds_path.glob("summary*.json"):
+                        with open(summary_file, 'r') as f:
+                            data = json.load(f)
+                            data["experiment_path"] = str(exp_path)
+                            all_data.append(data)
+        
+        return all_data

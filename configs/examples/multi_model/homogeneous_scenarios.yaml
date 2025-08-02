@@ -1,0 +1,23 @@
+# Homogeneous Model Scenarios
+# Single model baseline scenarios for comparison
+
+scenarios:
+  - name: "homogeneous_gpt4"
+    description: "All agents use GPT-4"
+    model_distribution:
+      "openai/gpt-4": 10
+      
+  - name: "homogeneous_claude3"
+    description: "All agents use Claude-3 Sonnet"
+    model_distribution:
+      "anthropic/claude-3-sonnet-20240229": 10
+      
+  - name: "homogeneous_gemini_pro"
+    description: "All agents use Gemini Pro"
+    model_distribution:
+      "google/gemini-pro": 10
+      
+  - name: "homogeneous_gemini_flash"
+    description: "All agents use Gemini 2.5 Flash"
+    model_distribution:
+      "google/gemini-2.5-flash": 10

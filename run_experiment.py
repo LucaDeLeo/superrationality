@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Main script to run the acausal cooperation experiment."""
 
+import argparse
 import asyncio
 import json
 import logging
@@ -16,12 +17,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.core.config import Config
-from src.core.models import ExperimentResult, StrategyRecord, GameResult, RoundSummary, Agent
+from src.core.models import ExperimentResult, StrategyRecord, GameResult, RoundSummary, Agent, ScenarioConfig
 from src.utils.data_manager import DataManager
 from src.flows.experiment import ExperimentFlow, RoundFlow
 from src.nodes import ContextKeys
 from src.core.api_client import OpenRouterClient
 from src.utils.game_logic import update_powers
+from src.core.scenario_manager import ScenarioManager
 
 
 class RateLimiter:
@@ -59,10 +61,15 @@ class RateLimiter:
 class ExperimentRunner:
     """Handles experiment execution with progress tracking and error recovery."""
     
-    def __init__(self):
-        """Initialize experiment runner."""
+    def __init__(self, scenario_name: Optional[str] = None):
+        """Initialize experiment runner.
+        
+        Args:
+            scenario_name: Optional scenario name for multi-model experiments
+        """
         self.config = Config()
-        self.data_manager = DataManager()
+        self.scenario_name = scenario_name
+        self.data_manager = DataManager(scenario_name=scenario_name)
         self.rate_limiter = RateLimiter()
         self.round_times: List[float] = []
         self.shutdown_requested = False
@@ -175,7 +182,7 @@ class ExperimentRunner:
         logging.info(f"📁 Results will be saved to: {self.data_manager.experiment_path}")
         
         # Create custom ExperimentFlow that integrates with our DataManager
-        experiment_flow = ExperimentFlow(self.config)
+        experiment_flow = ExperimentFlow(self.config, scenario_name=self.scenario_name)
         experiment_flow.experiment_id = self.data_manager.experiment_id
         
         result = None
@@ -227,8 +234,40 @@ class ExperimentRunner:
             start_time=datetime.now().isoformat()
         )
         
-        # Initialize agents
-        agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
+        # Initialize agents with scenario support
+        scenario_manager = None
+        if self.config.ENABLE_MULTI_MODEL and self.scenario_name:
+            # Load scenario from config
+            scenario = None
+            for s in self.config.scenarios:
+                if s.name == self.scenario_name:
+                    scenario = s
+                    break
+            
+            if scenario:
+                scenario_manager = ScenarioManager(num_agents=self.config.NUM_AGENTS)
+                agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
+                
+                # Assign models according to scenario
+                try:
+                    # Use experiment ID as seed for reproducibility
+                    seed = hash(self.data_manager.experiment_id) % 1000000
+                    scenario_manager.assign_models_to_agents(agents, scenario, seed=seed)
+                    
+                    # Save scenario assignments
+                    scenario_manager.save_scenario_assignments(self.data_manager.experiment_path)
+                    
+                    logging.info(f"Initialized agents with scenario: {scenario.name}")
+                    logging.info(f"Model diversity: {scenario_manager.calculate_model_diversity():.3f}")
+                except Exception as e:
+                    logging.error(f"Failed to apply scenario: {e}")
+                    agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
+            else:
+                logging.warning(f"Scenario '{self.scenario_name}' not found, using default")
+                agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
+        else:
+            # Default agent initialization
+            agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
         
         # Initialize context
         context = {
@@ -236,7 +275,8 @@ class ExperimentRunner:
             ContextKeys.AGENTS: agents,
             ContextKeys.ROUND_SUMMARIES: [],
             ContextKeys.CONFIG: self.config,
-            'data_manager': self.data_manager  # Add data manager to context
+            'data_manager': self.data_manager,  # Add data manager to context
+            'scenario_manager': scenario_manager  # Add scenario manager if available
         }
         
         self.current_context = context
@@ -391,7 +431,17 @@ class ExperimentRunner:
 
 async def main():
     """Main entry point for the experiment."""
-    runner = ExperimentRunner()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Run acausal cooperation experiment")
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        help="Scenario name for multi-model experiments (e.g., 'mixed_5_5', 'diverse_3_3_4')"
+    )
+    args = parser.parse_args()
+    
+    # Create runner with scenario if provided
+    runner = ExperimentRunner(scenario_name=args.scenario)
     
     try:
         result = await runner.run_experiment()
