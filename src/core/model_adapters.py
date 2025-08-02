@@ -48,18 +48,27 @@ class ModelAdapter(ABC):
         """
         pass
     
-    async def enforce_rate_limit(self):
-        """Enforce rate limiting based on model configuration."""
-        if self.last_request_time is not None:
-            elapsed = (datetime.now() - self.last_request_time).total_seconds()
-            min_interval = 60.0 / self.model_config.rate_limit
-            
-            if elapsed < min_interval:
-                sleep_time = min_interval - elapsed
-                logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s")
-                await asyncio.sleep(sleep_time)
+    async def enforce_rate_limit(self, rate_limiter=None):
+        """Enforce rate limiting based on model configuration.
         
-        self.last_request_time = datetime.now()
+        Args:
+            rate_limiter: Optional ModelRateLimiter instance for centralized rate limiting
+        """
+        # If a centralized rate limiter is provided, use it
+        if rate_limiter:
+            await rate_limiter.acquire(self.model_config.model_type)
+        else:
+            # Fall back to simple per-adapter rate limiting
+            if self.last_request_time is not None:
+                elapsed = (datetime.now() - self.last_request_time).total_seconds()
+                min_interval = 60.0 / self.model_config.rate_limit
+                
+                if elapsed < min_interval:
+                    sleep_time = min_interval - elapsed
+                    logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s")
+                    await asyncio.sleep(sleep_time)
+            
+            self.last_request_time = datetime.now()
     
     def get_headers(self) -> Dict[str, str]:
         """Get headers for API request.

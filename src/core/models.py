@@ -1,7 +1,7 @@
 """Data models for the acausal cooperation experiment."""
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 from enum import Enum
 
@@ -88,6 +88,10 @@ class StrategyRecord:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     model: str = "google/gemini-2.5-flash"
+    model_version: Optional[str] = None  # Specific model version (e.g., "20240229")
+    response_format: Optional[str] = None  # Track which parsing method succeeded
+    model_params: Optional[Dict[str, Any]] = None  # Temperature, max_tokens, etc.
+    inference_latency: Optional[float] = None  # Time taken for API call in seconds
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
 

@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 
 from src.core.prompts import (
     PromptTemplate, STRATEGY_COLLECTION_PROMPT, 
-    format_distribution, format_round_summary
+    format_distribution, format_round_summary,
+    apply_model_variations, validate_prompt_compatibility,
+    MODEL_PROMPT_VARIATIONS
 )
 from src.core.models import RoundSummary, AnonymizedGameResult
 
@@ -260,6 +262,127 @@ class TestRoundSummaryCreation:
             assert anon_game.round == 1
             assert anon_game.anonymous_id1.startswith("Agent_")
             assert anon_game.anonymous_id2.startswith("Agent_")
+
+
+class TestModelAwarePrompting:
+    """Test model-aware prompt rendering functionality."""
+    
+    def test_format_round_summary_with_model_type(self):
+        """Test that format_round_summary includes model_type in context."""
+        # Test with first round (no previous data)
+        result = format_round_summary(None, None, "openai/gpt-4")
+        assert result["model_type"] == "openai/gpt-4"
+        assert result["coop_rate"] == 50.0
+        
+        # Test with round data
+        round_summary = MagicMock(spec=RoundSummary)
+        round_summary.cooperation_rate = 75.0
+        round_summary.average_score = 40.0
+        round_summary.score_distribution = {'min': 20.0, 'max': 60.0, 'avg': 40.0}
+        
+        result = format_round_summary(round_summary, None, "anthropic/claude-3-sonnet-20240229")
+        assert result["model_type"] == "anthropic/claude-3-sonnet-20240229"
+        assert result["coop_rate"] == 75.0
+    
+    def test_apply_model_variations(self):
+        """Test applying model-specific prompt variations."""
+        base_prompt = "Design a strategy for the game."
+        
+        # Test GPT-4 variations
+        gpt4_prompt = apply_model_variations(base_prompt, "openai/gpt-4")
+        assert "Provide a structured strategy with clear reasoning" in gpt4_prompt
+        assert "Present your strategy as a concise decision rule" in gpt4_prompt
+        
+        # Test Claude variations
+        claude_prompt = apply_model_variations(base_prompt, "anthropic/claude-3-sonnet-20240229")
+        assert "Consider the ethical implications" in claude_prompt
+        assert "Explain your strategy and its rationale" in claude_prompt
+        
+        # Test Gemini Pro variations
+        gemini_prompt = apply_model_variations(base_prompt, "google/gemini-pro")
+        assert "Analyze the strategic implications systematically" in gemini_prompt
+        assert "Describe your strategy with logical reasoning" in gemini_prompt
+        
+        # Test unknown model (should return unchanged)
+        unknown_prompt = apply_model_variations(base_prompt, "unknown/model")
+        assert unknown_prompt == base_prompt
+        
+        # Test None model (should return unchanged)
+        none_prompt = apply_model_variations(base_prompt, None)
+        assert none_prompt == base_prompt
+    
+    def test_validate_prompt_compatibility(self):
+        """Test prompt compatibility validation across models."""
+        # Test with the actual STRATEGY_COLLECTION_PROMPT
+        validation_results = validate_prompt_compatibility(STRATEGY_COLLECTION_PROMPT)
+        
+        # All supported models should validate successfully
+        for model_type in MODEL_PROMPT_VARIATIONS.keys():
+            assert model_type in validation_results
+            assert validation_results[model_type] is True
+    
+    def test_validate_prompt_compatibility_with_custom_context(self):
+        """Test prompt validation with custom context."""
+        custom_context = {
+            'coop_rate': 90.0,
+            'distribution': 'min: 5.0, max: 95.0, avg: 50.0',
+            'previous_rounds_detail': 'Round 1: High cooperation observed.'
+        }
+        
+        validation_results = validate_prompt_compatibility(
+            STRATEGY_COLLECTION_PROMPT, 
+            custom_context
+        )
+        
+        # All models should validate successfully
+        assert all(validation_results.values())
+    
+    def test_model_specific_prompt_integration(self):
+        """Test full integration of model-aware prompting."""
+        # Create test context
+        round_summary = MagicMock(spec=RoundSummary)
+        round_summary.cooperation_rate = 80.0
+        round_summary.average_score = 55.0
+        round_summary.score_distribution = {'min': 30.0, 'max': 80.0, 'avg': 55.0}
+        
+        # Test rendering for each model type
+        for model_type in MODEL_PROMPT_VARIATIONS.keys():
+            context = format_round_summary(round_summary, None, model_type)
+            base_prompt = STRATEGY_COLLECTION_PROMPT.render(context)
+            final_prompt = apply_model_variations(base_prompt, model_type)
+            
+            # Verify critical components are present
+            assert "CRITICAL INSIGHT:" in final_prompt
+            assert "80.0%" in final_prompt  # cooperation rate
+            assert "min: 30.0, max: 80.0, avg: 55.0" in final_prompt
+            
+            # Verify model-specific enhancements
+            variations = MODEL_PROMPT_VARIATIONS[model_type]
+            if "instruction_suffix" in variations:
+                suffix_text = variations["instruction_suffix"].strip()
+                assert suffix_text in final_prompt
+            if "format_hint" in variations:
+                assert variations["format_hint"] in final_prompt
+    
+    def test_prompt_length_constraints(self):
+        """Test that prompts stay within reasonable length limits."""
+        # Create a context with very long previous rounds detail
+        long_detail = "Round details " * 500  # Very long string
+        
+        context = {
+            'coop_rate': 75.0,
+            'distribution': 'min: 0.0, max: 100.0, avg: 50.0',
+            'previous_rounds_detail': long_detail
+        }
+        
+        # Render for each model
+        for model_type in MODEL_PROMPT_VARIATIONS.keys():
+            context['model_type'] = model_type
+            prompt = STRATEGY_COLLECTION_PROMPT.render(context)
+            enhanced = apply_model_variations(prompt, model_type)
+            
+            # Verify prompt is not excessively long
+            assert len(enhanced) < 10000  # Reasonable upper limit
 
 
 if __name__ == "__main__":

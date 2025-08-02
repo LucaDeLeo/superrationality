@@ -100,6 +100,9 @@ class AnalysisNode(AsyncNode):
                 "superrational_logic": []
             },
             "strategies_by_round": defaultdict(int),
+            "strategies_by_model": defaultdict(int),  # NEW: Track by model
+            "markers_by_model": defaultdict(lambda: defaultdict(int)),  # NEW: Track markers by model
+            "model_specific_patterns": defaultdict(list),  # NEW: Model-specific patterns found
             "processing_stats": {
                 "total_files_processed": 0,
                 "total_strategies_processed": 0,
@@ -211,6 +214,7 @@ class AnalysisNode(AsyncNode):
         """
         agent_id = strategy_data.get("agent_id", -1)
         reasoning = strategy_data.get("full_reasoning", "") or strategy_data.get("reasoning", "")
+        model = strategy_data.get("model", "unknown")  # Get model type
         
         if not reasoning:
             logger.warning(f"No reasoning found for agent {agent_id} in round {round_num}")
@@ -219,6 +223,7 @@ class AnalysisNode(AsyncNode):
         # Track this strategy
         self.analysis_results["total_strategies_analyzed"] += 1
         self.analysis_results["strategies_by_round"][round_num] += 1
+        self.analysis_results["strategies_by_model"][model] += 1  # Track by model
         self.analysis_results["processing_stats"]["total_strategies_processed"] += 1
         
         # Track markers found in this transcript
@@ -232,6 +237,7 @@ class AnalysisNode(AsyncNode):
                 for match in matches:
                     transcript_markers[category] += 1
                     self.analysis_results[f"{category}_count"] += 1
+                    self.analysis_results["markers_by_model"][model][category] += 1  # Track by model
                     
                     # Extract quote with context
                     quote_data = self.extract_quote_with_context(
@@ -240,12 +246,16 @@ class AnalysisNode(AsyncNode):
                         agent_id, 
                         round_num,
                         category,
-                        pattern
+                        pattern,
+                        model  # Pass model info
                     )
                     
                     # Add to examples if not already at max
                     if len(self.analysis_results["marker_examples"][category]) < self.config["max_quotes_per_category"]:
                         self.analysis_results["marker_examples"][category].append(quote_data)
+                    
+                    # Track model-specific patterns
+                    self._track_model_specific_pattern(model, category, pattern, reasoning)
         
         return dict(transcript_markers)
     
@@ -256,7 +266,8 @@ class AnalysisNode(AsyncNode):
         agent_id: int, 
         round_num: int,
         category: str,
-        pattern: str
+        pattern: str,
+        model: str = "unknown"
     ) -> Dict[str, Any]:
         """Extract a quote with surrounding context.
         
@@ -296,6 +307,7 @@ class AnalysisNode(AsyncNode):
         return {
             "agent_id": agent_id,
             "round": round_num,
+            "model": model,  # Include model info
             "quote": quote.strip(),
             "context": f"Matched pattern: {pattern}",
             "confidence_score": confidence,
@@ -332,8 +344,38 @@ class AnalysisNode(AsyncNode):
         
         return round(base_confidence, 2)
     
+    def _track_model_specific_pattern(self, model: str, category: str, pattern: str, reasoning: str) -> None:
+        """Track model-specific patterns and behavioral differences.
+        
+        Args:
+            model: Model type
+            category: Marker category
+            pattern: Pattern that matched
+            reasoning: Full reasoning text
+        """
+        # Track unique patterns per model
+        pattern_key = f"{category}:{pattern}"
+        if pattern_key not in self.analysis_results["model_specific_patterns"][model]:
+            self.analysis_results["model_specific_patterns"][model].append(pattern_key)
+        
+        # Detect model-specific behaviors mentioned in Epic 6
+        if "gpt-4" in model.lower():
+            # GPT-4: explicit utility calculation patterns
+            if re.search(r"utility|payoff|score|calculate", reasoning, re.IGNORECASE):
+                self.analysis_results["markers_by_model"][model]["utility_calculation"] += 1
+        
+        elif "claude" in model.lower():
+            # Claude: constitutional principles
+            if re.search(r"principle|ethical|harm|constitution", reasoning, re.IGNORECASE):
+                self.analysis_results["markers_by_model"][model]["constitutional_reasoning"] += 1
+        
+        elif "gemini" in model.lower():
+            # Gemini: analytical patterns
+            if re.search(r"analyze|systematic|logical|therefore", reasoning, re.IGNORECASE):
+                self.analysis_results["markers_by_model"][model]["analytical_approach"] += 1
+    
     def generate_analysis_report(self) -> Dict[str, Any]:
-        """Generate the final analysis report.
+        """Generate the final analysis report with model-specific insights.
         
         Returns:
             Complete analysis report with all results
@@ -353,6 +395,12 @@ class AnalysisNode(AsyncNode):
         # Sort rounds analyzed
         self.analysis_results["rounds_analyzed"].sort()
         
+        # Generate model-specific insights
+        model_insights = self._generate_model_insights()
+        
+        # Calculate model-specific metrics
+        model_metrics = self._calculate_model_metrics()
+        
         report = {
             "acausal_analysis": {
                 "identity_reasoning_count": self.analysis_results["identity_reasoning_count"],
@@ -363,6 +411,13 @@ class AnalysisNode(AsyncNode):
                 "rounds_analyzed": self.analysis_results["rounds_analyzed"],
                 "marker_examples": self.analysis_results["marker_examples"],
                 "qualitative_summary": summary,
+                "model_specific_analysis": {
+                    "strategies_by_model": dict(self.analysis_results["strategies_by_model"]),
+                    "markers_by_model": dict(self.analysis_results["markers_by_model"]),
+                    "model_insights": model_insights,
+                    "model_metrics": model_metrics,
+                    "model_specific_patterns": dict(self.analysis_results["model_specific_patterns"])
+                },
                 "metadata": {
                     "analysis_version": "1.0",
                     "configuration": self.config,
@@ -428,6 +483,114 @@ class AnalysisNode(AsyncNode):
             )
         
         return "".join(summary_parts)
+    
+    def _generate_model_insights(self) -> Dict[str, Any]:
+        """Generate insights about model-specific behaviors.
+        
+        Returns:
+            Dictionary of model-specific insights
+        """
+        insights = {}
+        
+        for model, markers in self.analysis_results["markers_by_model"].items():
+            if model == "unknown":
+                continue
+                
+            model_total = self.analysis_results["strategies_by_model"][model]
+            if model_total == 0:
+                continue
+                
+            # Calculate marker percentages for this model
+            model_marker_percentages = {}
+            for category, count in markers.items():
+                percentage = (count / model_total * 100) if model_total > 0 else 0
+                model_marker_percentages[category] = round(percentage, 2)
+            
+            # Generate model-specific insight
+            insight = {
+                "total_strategies": model_total,
+                "marker_percentages": model_marker_percentages,
+                "dominant_patterns": [],
+                "behavioral_notes": ""
+            }
+            
+            # Find dominant patterns
+            sorted_markers = sorted(model_marker_percentages.items(), key=lambda x: x[1], reverse=True)
+            for category, percentage in sorted_markers[:3]:  # Top 3 patterns
+                if percentage > 10:  # Only include significant patterns
+                    insight["dominant_patterns"].append({
+                        "category": category,
+                        "percentage": percentage
+                    })
+            
+            # Add behavioral notes based on model type
+            if "gpt-4" in model.lower():
+                if "utility_calculation" in markers:
+                    insight["behavioral_notes"] = f"GPT-4 showed explicit utility calculation in {markers['utility_calculation']} strategies"
+            elif "claude" in model.lower():
+                if "constitutional_reasoning" in markers:
+                    insight["behavioral_notes"] = f"Claude exhibited constitutional reasoning in {markers['constitutional_reasoning']} strategies"
+            elif "gemini" in model.lower():
+                if "analytical_approach" in markers:
+                    insight["behavioral_notes"] = f"Gemini demonstrated analytical approach in {markers['analytical_approach']} strategies"
+            
+            insights[model] = insight
+        
+        return insights
+    
+    def _calculate_model_metrics(self) -> Dict[str, Any]:
+        """Calculate metrics for model comparison.
+        
+        Returns:
+            Dictionary of model comparison metrics
+        """
+        metrics = {
+            "model_distribution": {},
+            "cooperation_tendency_by_model": {},
+            "complexity_by_model": {},
+            "error_rates_by_model": {}
+        }
+        
+        total_strategies = self.analysis_results["total_strategies_analyzed"]
+        
+        # Calculate model distribution
+        for model, count in self.analysis_results["strategies_by_model"].items():
+            percentage = (count / total_strategies * 100) if total_strategies > 0 else 0
+            metrics["model_distribution"][model] = {
+                "count": count,
+                "percentage": round(percentage, 2)
+            }
+        
+        # Calculate cooperation tendency by model
+        for model, markers in self.analysis_results["markers_by_model"].items():
+            model_total = self.analysis_results["strategies_by_model"][model]
+            if model_total == 0:
+                continue
+                
+            # Sum cooperation-related markers
+            cooperation_markers = markers.get("identity_reasoning", 0) + markers.get("cooperation_despite_asymmetry", 0)
+            cooperation_percentage = (cooperation_markers / model_total * 100) if model_total > 0 else 0
+            
+            metrics["cooperation_tendency_by_model"][model] = round(cooperation_percentage, 2)
+        
+        # Strategy complexity placeholder (would need actual implementation)
+        # For now, we'll use pattern diversity as a proxy
+        for model, patterns in self.analysis_results["model_specific_patterns"].items():
+            pattern_diversity = len(patterns)
+            metrics["complexity_by_model"][model] = {
+                "pattern_diversity": pattern_diversity,
+                "unique_patterns": patterns[:5]  # Top 5 unique patterns
+            }
+        
+        # Error rates would come from strategy collection stats
+        # Placeholder for now
+        for model in self.analysis_results["strategies_by_model"].keys():
+            metrics["error_rates_by_model"][model] = {
+                "error_rate": 0.0,  # Would be populated from collection stats
+                "fallback_count": 0
+            }
+        
+        return metrics
     
     def save_analysis(self, data_manager: DataManager, report: Dict[str, Any]) -> None:
         """Save analysis results to file.
