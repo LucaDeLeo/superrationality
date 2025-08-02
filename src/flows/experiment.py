@@ -185,16 +185,28 @@ class RoundFlow(AsyncFlow):
 class ExperimentFlow:
     """Top-level experiment orchestrator."""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, scenario_name: Optional[str] = None):
         """Initialize experiment flow.
         
         Args:
             config: Experiment configuration
+            scenario_name: Optional scenario name when multi-model is enabled
         """
         self.config = config
         self.experiment_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         self.api_client: Optional[OpenRouterClient] = None
         self.data_manager = DataManager(base_path="results")
+        self.scenario_name = scenario_name
+        self.scenario = None
+        
+        # If multi-model enabled and scenario specified, find it
+        if self.config.ENABLE_MULTI_MODEL and scenario_name:
+            for scenario in self.config.scenarios:
+                if scenario.name == scenario_name:
+                    self.scenario = scenario
+                    break
+            if not self.scenario:
+                logger.warning(f"Scenario '{scenario_name}' not found, using default behavior")
     
     async def run(self) -> ExperimentResult:
         """Run the complete experiment.
@@ -211,7 +223,7 @@ class ExperimentFlow:
         )
         
         # Initialize agents
-        agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
+        agents = self._initialize_agents()
         
         # Initialize context
         context = {
@@ -515,3 +527,66 @@ class ExperimentFlow:
         if early_variance > 0:
             return max(0, 1 - (late_variance / early_variance))
         return 0.0
+    
+    def _initialize_agents(self) -> List[Agent]:
+        """Initialize agents with model assignments if multi-model is enabled.
+        
+        Returns:
+            List of initialized agents
+        """
+        agents = []
+        
+        # If multi-model is disabled or no scenario, use default initialization
+        if not self.config.ENABLE_MULTI_MODEL or not self.scenario:
+            agents = [Agent(id=i) for i in range(self.config.NUM_AGENTS)]
+            logger.info(f"Initialized {len(agents)} agents with default model")
+            return agents
+        
+        # Multi-model enabled with scenario - assign models
+        logger.info(f"Initializing agents for scenario: {self.scenario.name}")
+        
+        # Create agents based on model distribution
+        agent_id = 0
+        model_assignments = []
+        
+        for model_type, count in self.scenario.model_distribution.items():
+            # Get model config
+            if model_type not in self.config.model_configs:
+                logger.error(f"Model {model_type} not found in configs, using default")
+                model_config = None
+            else:
+                model_config = self.config.model_configs[model_type]
+            
+            # Create agents with this model
+            for _ in range(count):
+                agent = Agent(id=agent_id, model_config=model_config)
+                agents.append(agent)
+                model_assignments.append((agent_id, model_type))
+                agent_id += 1
+        
+        # Shuffle agents to avoid model clustering in games
+        random.shuffle(agents)
+        
+        # Log model distribution
+        logger.info("Model assignments:")
+        for model_type, count in self.scenario.model_distribution.items():
+            logger.info(f"  {model_type}: {count} agents")
+        
+        # Save model assignments for reference
+        try:
+            assignments_path = self.data_manager.get_experiment_path() / "model_assignments.json"
+            assignments_data = {
+                "scenario": self.scenario.name,
+                "assignments": [
+                    {"agent_id": aid, "model": mtype} 
+                    for aid, mtype in model_assignments
+                ],
+                "distribution": self.scenario.model_distribution
+            }
+            with open(assignments_path, 'w') as f:
+                json.dump(assignments_data, f, indent=2)
+            logger.info(f"Saved model assignments to {assignments_path}")
+        except Exception as e:
+            logger.error(f"Failed to save model assignments: {e}")
+        
+        return agents

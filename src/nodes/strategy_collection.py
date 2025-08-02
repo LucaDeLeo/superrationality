@@ -12,6 +12,7 @@ from src.core.models import Agent, StrategyRecord, GameResult, RoundSummary
 from src.core.api_client import OpenRouterClient
 from src.core.config import Config
 from src.core.prompts import STRATEGY_COLLECTION_PROMPT, format_round_summary
+from src.core.model_adapters import ModelAdapterFactory, FallbackHandler
 
 logger = logging.getLogger(__name__)
 
@@ -57,18 +58,46 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             prompt = self.build_prompt(agent, round_num, round_summaries)
             messages = [{"role": "user", "content": prompt}]
             
-            # Use asyncio.wait_for to enforce timeout
-            response_text, prompt_tokens, completion_tokens = await asyncio.wait_for(
-                self.api_client.get_completion_with_usage(
-                    messages=messages,
-                    model=self.config.MAIN_MODEL,
-                    temperature=0.7,
-                    max_tokens=1000
-                ),
-                timeout=self.timeout
-            )
+            # Determine model and adapter to use
+            model = self.config.MAIN_MODEL
+            adapter = None
             
-            return self.parse_strategy(agent, round_num, response_text, prompt_tokens, completion_tokens)
+            # Check if agent has model_config (multi-model enabled)
+            if agent.model_config is not None:
+                adapter = ModelAdapterFactory.get_adapter(agent.model_config)
+                model = agent.model_config.model_type
+            
+            # Use asyncio.wait_for to enforce timeout
+            if adapter:
+                # Use adapter-aware API call
+                response = await asyncio.wait_for(
+                    self.api_client.complete(
+                        messages=messages,
+                        model=model,
+                        temperature=0.7,
+                        max_tokens=1000,
+                        adapter=adapter
+                    ),
+                    timeout=self.timeout
+                )
+                # Parse response using adapter
+                response_text = adapter.parse_response(response)
+                usage = response.get("usage", {})
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
+            else:
+                # Use existing method for backward compatibility
+                response_text, prompt_tokens, completion_tokens = await asyncio.wait_for(
+                    self.api_client.get_completion_with_usage(
+                        messages=messages,
+                        model=model,
+                        temperature=0.7,
+                        max_tokens=1000
+                    ),
+                    timeout=self.timeout
+                )
+            
+            return self.parse_strategy(agent, round_num, response_text, prompt_tokens, completion_tokens, model)
             
         except asyncio.TimeoutError:
             logger.error(f"Strategy collection timeout for agent {agent.id} in round {round_num}")
@@ -81,6 +110,45 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             with open("experiment_errors.log", "a") as f:
                 f.write(f"{datetime.now().isoformat()} - StrategyCollectionNode - "
                        f"Failed for agent {agent.id} in round {round_num}: {e}\n")
+            
+            # If multi-model enabled and agent has model config, try fallback
+            if agent.model_config is not None:
+                fallback_config = await FallbackHandler.handle_model_failure(
+                    e, agent.model_config, 
+                    {"agent_id": agent.id, "round": round_num}
+                )
+                
+                if fallback_config:
+                    # Retry with fallback model
+                    try:
+                        logger.info(f"Retrying agent {agent.id} with fallback model {fallback_config.model_type}")
+                        
+                        # Create new adapter for fallback
+                        fallback_adapter = ModelAdapterFactory.get_adapter(fallback_config)
+                        
+                        # Retry the API call
+                        response = await asyncio.wait_for(
+                            self.api_client.complete(
+                                messages=messages,
+                                model=fallback_config.model_type,
+                                temperature=0.7,
+                                max_tokens=1000,
+                                adapter=fallback_adapter
+                            ),
+                            timeout=self.timeout
+                        )
+                        
+                        response_text = fallback_adapter.parse_response(response)
+                        usage = response.get("usage", {})
+                        return self.parse_strategy(
+                            agent, round_num, response_text,
+                            usage.get("prompt_tokens", 0),
+                            usage.get("completion_tokens", 0),
+                            fallback_config.model_type
+                        )
+                    except Exception as fallback_error:
+                        logger.error(f"Fallback also failed for agent {agent.id}: {fallback_error}")
+            
             return self.create_fallback_strategy(agent, round_num, str(e))
     
     def build_prompt(self, agent: Agent, round_num: int, round_summaries: List[RoundSummary]) -> str:
@@ -103,7 +171,7 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
         # Render the prompt using the template
         return STRATEGY_COLLECTION_PROMPT.render(context)
     
-    def parse_strategy(self, agent: Agent, round_num: int, response: str, prompt_tokens: int = 0, completion_tokens: int = 0) -> StrategyRecord:
+    def parse_strategy(self, agent: Agent, round_num: int, response: str, prompt_tokens: int = 0, completion_tokens: int = 0, model: Optional[str] = None) -> StrategyRecord:
         """Parse strategy from LLM response.
         
         Args:
@@ -112,6 +180,7 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             response: LLM response text
             prompt_tokens: Number of tokens in the prompt
             completion_tokens: Number of tokens in the completion
+            model: Model used (optional, defaults to config.MAIN_MODEL)
             
         Returns:
             StrategyRecord
@@ -138,7 +207,7 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             full_reasoning=response,  # Store full response as reasoning
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
-            model=self.config.MAIN_MODEL
+            model=model or self.config.MAIN_MODEL
         )
     
     def create_fallback_strategy(self, agent: Agent, round_num: int, error_reason: str) -> StrategyRecord:

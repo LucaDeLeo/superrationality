@@ -1,12 +1,13 @@
 """Subagent decision node for making game decisions."""
 
 import logging
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 
 from .base import AsyncNode
 from src.core.models import Agent, GameResult
 from src.core.api_client import OpenRouterClient
 from src.core.config import Config
+from src.core.model_adapters import ModelAdapterFactory, FallbackHandler
 
 logger = logging.getLogger(__name__)
 
@@ -52,42 +53,104 @@ class SubagentDecisionNode(AsyncNode):
         """
         # Try with normal prompt first
         prompt = self.build_decision_prompt(agent, opponent, strategy, game_history)
-        decision = await self.parse_with_retry(prompt, max_retries=2)
+        decision = await self.parse_with_retry(prompt, max_retries=2, agent=agent)
         return decision
     
-    async def parse_with_retry(self, initial_prompt: str, max_retries: int = 2) -> str:
+    async def parse_with_retry(self, initial_prompt: str, max_retries: int = 2, agent: Optional[Agent] = None) -> str:
         """Parse decision with retry logic for ambiguous responses.
         
         Args:
             initial_prompt: Initial prompt to use
             max_retries: Maximum number of retries (default: 2)
+            agent: Optional agent for model-specific decisions
             
         Returns:
             "COOPERATE" or "DEFECT"
         """
         prompt = initial_prompt
         
+        # Determine model and adapter to use
+        model = self.GPT_4_1_NANO_MODEL
+        adapter = None
+        
+        # Check if agent has model_config (multi-model enabled)
+        if agent and agent.model_config is not None:
+            adapter = ModelAdapterFactory.get_adapter(agent.model_config)
+            model = agent.model_config.model_type
+            # Override temperature if specified in model config
+            temperature = agent.model_config.temperature
+            max_tokens = min(100, agent.model_config.max_tokens)  # Cap at 100 for decisions
+        else:
+            temperature = 0.3
+            max_tokens = 100
+        
         for attempt in range(max_retries + 1):
             messages = [{"role": "user", "content": prompt}]
-            response = await self.api_client.get_completion_text(
-                messages=messages,
-                model=self.GPT_4_1_NANO_MODEL,
-                temperature=0.3,
-                max_tokens=100
-            )
             
-            # Log raw response
-            logger.debug(f"Attempt {attempt + 1}: Raw response: {response}")
-            
-            decision, is_ambiguous = self.parse_decision(response)
-            
-            if not is_ambiguous:
-                return decision
-            
-            # If ambiguous and we have retries left, use more direct prompt
-            if attempt < max_retries:
-                logger.debug(f"Ambiguous response, retrying with clearer prompt")
-                prompt = "Reply with only one word: COOPERATE or DEFECT"
+            try:
+                if adapter:
+                    # Use adapter-aware API call
+                    response = await self.api_client.complete(
+                        messages=messages,
+                        model=model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        adapter=adapter
+                    )
+                    # Parse response using adapter
+                    response_text = adapter.parse_response(response)
+                else:
+                    # Use existing method for backward compatibility
+                    response_text = await self.api_client.get_completion_text(
+                        messages=messages,
+                        model=model,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                
+                # Log raw response
+                logger.debug(f"Attempt {attempt + 1}: Raw response: {response_text}")
+                
+                decision, is_ambiguous = self.parse_decision(response_text)
+                
+                if not is_ambiguous:
+                    return decision
+                
+                # If ambiguous and we have retries left, use more direct prompt
+                if attempt < max_retries:
+                    logger.debug(f"Ambiguous response, retrying with clearer prompt")
+                    prompt = "Reply with only one word: COOPERATE or DEFECT"
+                    
+            except Exception as e:
+                logger.error(f"Error in decision attempt {attempt + 1}: {e}")
+                
+                # If multi-model enabled and agent has model config, try fallback
+                if agent and agent.model_config is not None and attempt == 0:
+                    fallback_config = await FallbackHandler.handle_model_failure(
+                        e, agent.model_config,
+                        {"agent_id": agent.id, "decision": "subagent"}
+                    )
+                    
+                    if fallback_config:
+                        # Update adapter for next attempt
+                        adapter = ModelAdapterFactory.get_adapter(fallback_config)
+                        model = fallback_config.model_type
+                        temperature = fallback_config.temperature
+                        max_tokens = min(100, fallback_config.max_tokens)
+                        logger.info(f"Retrying with fallback model {model}")
+                        continue
+                
+                # If no fallback or fallback failed, use default
+                if attempt < max_retries:
+                    logger.debug(f"Error occurred, retrying with default model")
+                    adapter = None
+                    model = self.GPT_4_1_NANO_MODEL
+                    temperature = 0.3
+                    max_tokens = 100
+                else:
+                    # Final attempt failed, return default
+                    logger.warning(f"All attempts failed, defaulting to COOPERATE")
+                    return "COOPERATE"
         
         # If still ambiguous after all retries, return the last decision
         logger.warning(f"Still ambiguous after {max_retries} retries, using: {decision}")

@@ -7,6 +7,9 @@ import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+from src.core.models import ModelConfig
+from src.core.model_adapters import ModelAdapter, ModelAdapterFactory, FallbackHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +47,8 @@ class OpenRouterClient:
         model: str,
         temperature: float = 0.7,
         max_tokens: int = 1000,
-        timeout: float = 30.0
+        timeout: float = 30.0,
+        adapter: Optional[ModelAdapter] = None
     ) -> Dict[str, Any]:
         """Make a completion request to OpenRouter.
         
@@ -54,6 +58,7 @@ class OpenRouterClient:
             temperature: Sampling temperature
             max_tokens: Maximum tokens to generate
             timeout: Request timeout in seconds
+            adapter: Optional model adapter for multi-model support
             
         Returns:
             API response dictionary
@@ -64,20 +69,36 @@ class OpenRouterClient:
         if not self.session:
             raise RuntimeError("Client not initialized. Use async context manager.")
         
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens
-        }
+        # If adapter provided, use it to build request
+        if adapter:
+            # Enforce rate limiting
+            await adapter.enforce_rate_limit()
+            
+            # Convert messages to prompt if needed (adapter handles format)
+            prompt = messages[0]["content"] if len(messages) == 1 else json.dumps(messages)
+            payload = adapter.get_request_params(
+                prompt,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            headers = adapter.get_headers()
+        else:
+            # Default behavior - backward compatible
+            payload = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+            headers = self.headers
         
-        logger.debug(f"Making API request to {model}")
+        logger.debug(f"Making API request to {payload.get('model', model)}")
         
         try:
             timeout_obj = aiohttp.ClientTimeout(total=timeout)
             async with self.session.post(
                 self.BASE_URL,
-                headers=self.headers,
+                headers=headers,
                 json=payload,
                 timeout=timeout_obj
             ) as response:
@@ -86,17 +107,17 @@ class OpenRouterClient:
                     raise Exception(f"API request failed ({response.status}): {error_text}")
                 
                 data = await response.json()
-                logger.debug(f"API response received from {model}")
+                logger.debug(f"API response received from {payload.get('model', model)}")
                 return data
                 
         except asyncio.TimeoutError:
-            logger.error(f"API request timeout after {timeout}s for {model}")
+            logger.error(f"API request timeout after {timeout}s for {payload.get('model', model)}")
             raise
         except Exception as e:
             logger.error(f"API request failed: {e}")
             with open("experiment_errors.log", "a") as f:
                 f.write(f"{datetime.now().isoformat()} - OpenRouterClient - "
-                       f"API request failed for {model}: {e}\n")
+                       f"API request failed for {payload.get('model', model)}: {e}\n")
             raise
     
     async def get_completion_text(
