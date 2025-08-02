@@ -1,0 +1,19 @@
+# Diverse Multi-Model Scenarios
+# Scenarios with 3 or more different models
+
+scenarios:
+  - name: "diverse_3_3_4"
+    description: "Three-way split with slight Gemini majority"
+    model_distribution:
+      "openai/gpt-4": 3
+      "anthropic/claude-3-sonnet-20240229": 3
+      "google/gemini-pro": 4
+      
+  - name: "diverse_2_2_2_2_2"
+    description: "Five different models equally distributed"
+    model_distribution:
+      "openai/gpt-4": 2
+      "openai/gpt-3.5-turbo": 2
+      "anthropic/claude-3-sonnet-20240229": 2
+      "google/gemini-pro": 2
+      "google/gemini-2.5-flash": 2

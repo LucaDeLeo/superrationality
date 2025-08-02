@@ -258,10 +258,13 @@ class CrossModelAnalyzer:
             }
         }
     
-    def analyze_model_coalitions(self) -> Dict[str, Any]:
+    def analyze_model_coalitions(self, include_temporal: bool = True) -> Dict[str, Any]:
         """
         Detect if certain model pairs form persistent cooperation coalitions.
         
+        Args:
+            include_temporal: Whether to include temporal coalition tracking
+            
         Returns:
             Dict containing coalition analysis results
         """
@@ -340,7 +343,7 @@ class CrossModelAnalyzer:
         high_strength_coalitions = [c for c in coalitions if c["strength"] > 0.7]
         coalition_detected = len(high_strength_coalitions) >= 2
         
-        return {
+        result = {
             "detected": coalition_detected,
             "coalition_groups": high_strength_coalitions[:5],  # Top 5 coalitions
             "all_pairings": coalitions,
@@ -348,6 +351,37 @@ class CrossModelAnalyzer:
             "weakest_pair": weakest,
             "total_rounds_analyzed": len(games_by_round)
         }
+        
+        # Add temporal tracking if requested
+        if include_temporal and len(games_by_round) > 0:
+            from src.utils.coalition_tracker import TemporalCoalitionTracker
+            
+            tracker = TemporalCoalitionTracker()
+            
+            # Process each round
+            for round_num in sorted(games_by_round.keys()):
+                round_cooperation_rates = {}
+                
+                # Calculate cooperation rates for this round
+                for model_pair, round_data in cooperation_by_round.items():
+                    if round_num in round_data:
+                        rates = round_data[round_num]
+                        if rates:
+                            round_cooperation_rates[model_pair] = sum(rates) / len(rates)
+                
+                # Update tracker
+                tracker.update_round(round_num, round_cooperation_rates)
+            
+            # Get temporal analysis
+            result["temporal_analysis"] = {
+                "stability_metrics": tracker.get_coalition_stability_metrics(),
+                "cross_vs_same_model": tracker.identify_cross_model_vs_same_model_patterns(),
+                "coalition_cascades": tracker.detect_coalition_cascades(),
+                "defection_patterns": tracker.track_defection_patterns(),
+                "network_data": tracker.generate_coalition_network_data()
+            }
+        
+        return result
     
     def generate_heatmap_data(self) -> Dict[str, Any]:
         """

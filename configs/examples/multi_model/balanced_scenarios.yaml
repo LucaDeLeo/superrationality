@@ -1,0 +1,21 @@
+# Balanced Mixed Model Scenarios
+# Each scenario maintains equal ratios between models
+
+scenarios:
+  - name: "mixed_5_5_gpt_claude"
+    description: "Balanced mix of GPT-4 and Claude-3"
+    model_distribution:
+      "openai/gpt-4": 5
+      "anthropic/claude-3-sonnet-20240229": 5
+      
+  - name: "mixed_5_5_gpt_gemini"
+    description: "Balanced mix of GPT-4 and Gemini-Pro"
+    model_distribution:
+      "openai/gpt-4": 5
+      "google/gemini-pro": 5
+      
+  - name: "mixed_5_5_claude_gemini"
+    description: "Balanced mix of Claude-3 and Gemini-Pro"
+    model_distribution:
+      "anthropic/claude-3-sonnet-20240229": 5
+      "google/gemini-pro": 5
