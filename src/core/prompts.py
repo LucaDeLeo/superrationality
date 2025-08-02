@@ -154,7 +154,7 @@ def format_previous_rounds(round_summaries: List['RoundSummary'], current_agent_
     
     for summary in round_summaries[-3:]:  # Show last 3 rounds
         round_text = f"Round {summary.round}:"
-        round_text += f"\n  - Average cooperation rate: {summary.cooperation_rate:.1f}%"
+        round_text += f"\n  - Average cooperation rate: {summary.cooperation_rate:.1%}"
         
         # Show power distribution without linking to IDs
         if hasattr(summary, 'power_distribution') and summary.power_distribution:

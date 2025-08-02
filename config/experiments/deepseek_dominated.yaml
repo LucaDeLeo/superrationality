@@ -1,0 +1,31 @@
+# DeepSeek-Dominated Experiment
+# Tests the disruptive open-source models against commercial ones
+
+name: "DeepSeek vs Commercial"
+description: "Majority DeepSeek models with minority commercial models"
+
+model_distribution:
+  deepseek-r1: 4
+  deepseek-r1t-chimera: 3
+  gpt-4o: 2
+  claude-4-sonnet: 1
+
+rounds: 10
+games_per_round: 45
+
+parameters:
+  collect_reasoning: true
+  save_transcripts: true
+  anonymize_agents: true
+
+analysis:
+  open_vs_commercial_comparison: true
+  cost_effectiveness_analysis: true
+  reasoning_quality_metrics: true
+  cooperation_by_model_type: true
+
+expected_outcomes:
+  - Test if open-source models cooperate differently
+  - Compare reasoning approaches
+  - Evaluate cost-performance tradeoffs
+  - See if commercial models adapt to open-source majority

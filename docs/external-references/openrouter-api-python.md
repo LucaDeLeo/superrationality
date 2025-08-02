@@ -45,7 +45,7 @@ client = OpenAI(
 
 ```python
 response = client.chat.completions.create(
-    model="google/gemini-2.0-flash-exp:free",
+    model="google/gemini-2.5-flash",
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "What is the capital of France?"}
@@ -61,7 +61,7 @@ OpenRouter supports streaming for all models with Server-Sent Events (SSE):
 
 ```python
 stream = client.chat.completions.create(
-    model="google/gemini-2.0-flash-exp:free",
+    model="google/gemini-2.5-flash",
     messages=[{"role": "user", "content": "Count to 5 slowly"}],
     stream=True
 )
@@ -76,7 +76,7 @@ for chunk in stream:
 ### Model Format
 Models must include the organization prefix:
 - `openai/gpt-4`
-- `google/gemini-2.0-flash-exp:free`
+- `google/gemini-2.5-flash`
 - `anthropic/claude-3-opus-20240229`
 
 ### Get Available Models
@@ -123,7 +123,7 @@ class User(BaseModel):
 
 # Create structured output
 user = client.chat.completions.create(
-    model="google/gemini-2.0-flash-exp:free",
+    model="google/gemini-2.5-flash",
     messages=[{"role": "user", "content": "Extract: Jason is 25 years old, email: jason@example.com"}],
     response_model=User
 )
@@ -144,7 +144,7 @@ async_client = AsyncOpenAI(
 
 async def get_response():
     response = await async_client.chat.completions.create(
-        model="google/gemini-2.0-flash-exp:free",
+        model="google/gemini-2.5-flash",
         messages=[{"role": "user", "content": "Hello!"}]
     )
     return response.choices[0].message.content
@@ -158,7 +158,7 @@ result = asyncio.run(get_response())
 ```python
 try:
     response = client.chat.completions.create(
-        model="google/gemini-2.0-flash-exp:free",
+        model="google/gemini-2.5-flash",
         messages=[{"role": "user", "content": "Hello"}]
     )
 except Exception as e:
@@ -172,7 +172,7 @@ except Exception as e:
 
 ```python
 response = client.chat.completions.create(
-    model="google/gemini-2.0-flash-exp:free",
+    model="google/gemini-2.5-flash",
     messages=[{"role": "user", "content": "Hello"}],
     extra_body={
         "transforms": ["middle-out"],
@@ -222,8 +222,8 @@ class OpenRouterClient:
             api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1"
         )
-    
-    def chat(self, messages: List[Dict[str, str]], model: str = "google/gemini-2.0-flash-exp:free"):
+
+    def chat(self, messages: List[Dict[str, str]], model: str = "google/gemini-2.5-flash"):
         try:
             response = self.client.chat.completions.create(
                 model=model,
@@ -234,14 +234,14 @@ class OpenRouterClient:
             return response.choices[0].message.content
         except Exception as e:
             return f"Error: {str(e)}"
-    
-    def stream_chat(self, messages: List[Dict[str, str]], model: str = "google/gemini-2.0-flash-exp:free"):
+
+    def stream_chat(self, messages: List[Dict[str, str]], model: str = "google/gemini-2.5-flash"):
         stream = self.client.chat.completions.create(
             model=model,
             messages=messages,
             stream=True
         )
-        
+
         for chunk in stream:
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content

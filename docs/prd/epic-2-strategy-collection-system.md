@@ -1,6 +1,6 @@
 # Epic 2: Strategy Collection System
 
-**Priority:** P0 - Critical  
+**Priority:** P0 - Critical
 **Description:** Build the system for collecting strategies from main agents.
 
 ## User Stories
@@ -62,7 +62,7 @@ Your strategy should be clear and implementable as a simple decision rule.
   "round": 1,
   "agent_id": 0,
   "timestamp": "2024-01-01T00:00:00Z",
-  "model": "google/gemini-2.0-flash-exp:free",
+  "model": "google/gemini-2.5-flash",
   "strategy": "Extracted concise strategy",
   "full_reasoning": "Complete response transcript",
   "prompt_tokens": 500,

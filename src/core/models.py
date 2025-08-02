@@ -12,7 +12,7 @@ class Agent:
     power: float = 100.0
     strategy: str = ""
     total_score: float = 0.0
-    
+
     def __post_init__(self):
         """Validate agent attributes."""
         if not 0 <= self.id <= 9:
@@ -35,7 +35,7 @@ class GameResult:
     player1_power_before: float = 0.0
     player2_power_before: float = 0.0
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    
+
     def __post_init__(self):
         """Validate game result attributes."""
         valid_actions = {"COOPERATE", "DEFECT"}
@@ -55,7 +55,7 @@ class StrategyRecord:
     full_reasoning: str
     prompt_tokens: int = 0
     completion_tokens: int = 0
-    model: str = "google/gemini-2.0-flash-exp:free"
+    model: str = "google/gemini-2.5-flash"
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -81,16 +81,16 @@ class RoundSummary:
     score_distribution: Dict[str, float] = field(default_factory=dict)  # Score stats (min, max, avg)
     anonymized_games: List[AnonymizedGameResult] = field(default_factory=list)
     strategy_similarity: float = 0.0
-    
+
     @classmethod
     def from_game_results(cls, round_num: int, games: List[GameResult], agents: List[Agent]) -> 'RoundSummary':
         """Create RoundSummary from game results and agent states.
-        
+
         Args:
             round_num: Round number
             games: List of GameResult objects for the round
             agents: List of Agent objects with current state
-            
+
         Returns:
             RoundSummary object with calculated statistics
         """
@@ -102,12 +102,12 @@ class RoundSummary:
             for game in games
         )
         cooperation_rate = (cooperate_count / total_actions * 100) if total_actions > 0 else 0.0
-        
+
         # Calculate average score and variance
         agent_scores = {agent.id: agent.total_score for agent in agents}
         scores = list(agent_scores.values())
         average_score = sum(scores) / len(scores) if scores else 0.0
-        
+
         # Calculate variance
         if len(scores) > 1:
             mean = average_score
@@ -115,14 +115,14 @@ class RoundSummary:
             score_variance = variance
         else:
             score_variance = 0.0
-        
+
         # Calculate score distribution
         score_distribution = {
             'min': min(scores) if scores else 0.0,
             'max': max(scores) if scores else 0.0,
             'avg': average_score
         }
-        
+
         # Calculate power distribution
         powers = [agent.power for agent in agents]
         power_distribution = {
@@ -131,17 +131,17 @@ class RoundSummary:
             'min': min(powers) if powers else 100.0,
             'max': max(powers) if powers else 100.0
         }
-        
+
         # Create anonymized games
         anonymized_games = []
         for game in games:
             # Create anonymous IDs based on position in this round
             anon_id1 = f"Agent_{hash(f'{round_num}_{game.player1_id}') % 1000}"
             anon_id2 = f"Agent_{hash(f'{round_num}_{game.player2_id}') % 1000}"
-            
+
             # Calculate power ratio
             power_ratio = game.player2_power_before / game.player1_power_before if game.player1_power_before > 0 else 1.0
-            
+
             anonymized_games.append(AnonymizedGameResult(
                 round=round_num,
                 anonymous_id1=anon_id1,
@@ -150,7 +150,7 @@ class RoundSummary:
                 action2=game.player2_action,
                 power_ratio=power_ratio
             ))
-        
+
         return cls(
             round=round_num,
             cooperation_rate=cooperation_rate,

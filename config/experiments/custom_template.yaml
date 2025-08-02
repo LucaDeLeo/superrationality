@@ -1,0 +1,42 @@
+# Custom Experiment Template
+# Use this as a starting point for your own experiments
+
+name: "Custom Experiment"
+description: "Configure your own model distribution and parameters"
+
+# Define your model mix here
+model_distribution: {}
+  # Examples:
+  # gpt-4o: 5
+  # claude-4-sonnet: 3
+  # gemini-2.5-pro: 2
+
+# Basic parameters (defaults shown)
+rounds: 10
+games_per_round: 45
+
+# Optional parameters
+parameters:
+  collect_reasoning: true
+  save_transcripts: true
+  anonymize_agents: true
+  # Add custom parameters as needed
+
+# Analysis options
+analysis:
+  # Enable the analyses you want:
+  # track_cross_model: true
+  # cooperation_matrix: true
+  # statistical_significance: true
+  # Add custom analysis flags
+
+# Optional sections
+cost_estimate:
+  max_budget_usd: null
+  alert_at_percent: 80
+
+expected_outcomes: []
+  # List your hypotheses
+
+notes: ""
+  # Any additional notes about the experiment

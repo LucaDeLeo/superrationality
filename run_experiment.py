@@ -10,6 +10,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from src.core.config import Config
 from src.core.models import ExperimentResult, StrategyRecord, GameResult, RoundSummary, Agent
