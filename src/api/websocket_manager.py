@@ -2,7 +2,7 @@
 WebSocket connection manager for real-time updates.
 """
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Set
 from fastapi import WebSocket
 import logging
@@ -94,7 +94,7 @@ class ConnectionManager:
                 "experiment_id": experiment_id,
                 "status": status,
                 "progress": progress or {},
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         }
         await self.broadcast(message)
@@ -107,7 +107,7 @@ class ConnectionManager:
                 "experiment_id": experiment_id,
                 "round_num": round_num,
                 "round_summary": round_data,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         }
         await self.broadcast(message)

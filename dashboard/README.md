@@ -63,7 +63,7 @@ A web-based dashboard for visualizing and analyzing acausal cooperation experime
 
 For development, use these credentials:
 - Username: `admin`
-- Password: `admin123`
+- Password: `admin`
 
 ### Building for Production
 
