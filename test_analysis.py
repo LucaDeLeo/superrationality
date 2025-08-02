@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch, MagicMock
 from src.nodes.analysis import AnalysisNode
 from src.nodes.base import ContextKeys
 from src.utils.data_manager import DataManager
+from src.utils.cross_model_analyzer import CrossModelAnalyzer
 
 
 class TestAnalysisNode:
@@ -379,6 +380,316 @@ class TestAnalysisNode:
         assert len(summary) > 50  # Should be meaningful text
         assert "identity reasoning" in summary.lower()
         assert "superrational" in summary.lower()
+
+    # Cross-model analysis integration tests
+    @pytest.mark.asyncio
+    async def test_cross_model_analysis_integration(self, analysis_node, mock_data_manager):
+        """Test full integration with cross-model analysis."""
+        # Create multi-model strategy files
+        strategies_r1 = {
+            "round": 1,
+            "timestamp": datetime.now().isoformat(),
+            "strategies": [
+                {
+                    "agent_id": 0,
+                    "round": 1,
+                    "model": "gpt-4",
+                    "full_reasoning": "As an identical agent, cooperation is the rational choice.",
+                    "strategy": "COOPERATE"
+                },
+                {
+                    "agent_id": 1,
+                    "round": 1,
+                    "model": "gpt-4",
+                    "full_reasoning": "I should cooperate with my identical counterpart.",
+                    "strategy": "COOPERATE"
+                },
+                {
+                    "agent_id": 2,
+                    "round": 1,
+                    "model": "claude-3",
+                    "full_reasoning": "From constitutional principles, cooperation minimizes harm.",
+                    "strategy": "COOPERATE"
+                },
+                {
+                    "agent_id": 3,
+                    "round": 1,
+                    "model": "claude-3",
+                    "full_reasoning": "Ethical considerations suggest cooperation.",
+                    "strategy": "COOPERATE"
+                }
+            ]
+        }
+        
+        # Create game result files
+        games_r1 = {
+            "round": 1,
+            "timestamp": datetime.now().isoformat(),
+            "games": [
+                {
+                    "game_id": "g1",
+                    "round": 1,
+                    "player1_id": 0,
+                    "player2_id": 1,
+                    "player1_action": "COOPERATE",
+                    "player2_action": "COOPERATE"
+                },
+                {
+                    "game_id": "g2",
+                    "round": 1,
+                    "player1_id": 2,
+                    "player2_id": 3,
+                    "player1_action": "COOPERATE",
+                    "player2_action": "COOPERATE"
+                },
+                {
+                    "game_id": "g3",
+                    "round": 1,
+                    "player1_id": 0,
+                    "player2_id": 2,
+                    "player1_action": "COOPERATE",
+                    "player2_action": "DEFECT"
+                }
+            ]
+        }
+        
+        # Create test files
+        rounds_path = mock_data_manager.experiment_path / "rounds"
+        rounds_path.mkdir(parents=True, exist_ok=True)
+        
+        with open(rounds_path / "strategies_r1.json", "w") as f:
+            json.dump(strategies_r1, f)
+        
+        with open(rounds_path / "games_r1.json", "w") as f:
+            json.dump(games_r1, f)
+        
+        # Run analysis
+        context = {ContextKeys.DATA_MANAGER: mock_data_manager}
+        result = await analysis_node.execute(context)
+        
+        assert "transcript_analysis" in result
+        report = result["transcript_analysis"]
+        
+        # Check cross-model analysis exists
+        assert "cross_model_analysis" in report
+        cross_analysis = report["cross_model_analysis"]
+        
+        assert "cooperation_matrix" in cross_analysis
+        assert "in_group_bias" in cross_analysis
+        assert "model_statistics" in cross_analysis
+        assert "model_coalitions" in cross_analysis
+        assert "visualization_data" in cross_analysis
+    
+    @pytest.mark.asyncio
+    async def test_single_model_experiment_skip_cross_analysis(self, analysis_node, mock_data_manager):
+        """Test that single-model experiments skip cross-model analysis."""
+        # Create single-model strategy files
+        strategies_r1 = {
+            "round": 1,
+            "timestamp": datetime.now().isoformat(),
+            "strategies": [
+                {
+                    "agent_id": 0,
+                    "round": 1,
+                    "model": "gpt-4",
+                    "full_reasoning": "Cooperation is rational.",
+                    "strategy": "COOPERATE"
+                },
+                {
+                    "agent_id": 1,
+                    "round": 1,
+                    "model": "gpt-4",
+                    "full_reasoning": "I cooperate.",
+                    "strategy": "COOPERATE"
+                }
+            ]
+        }
+        
+        # Create test files
+        rounds_path = mock_data_manager.experiment_path / "rounds"
+        rounds_path.mkdir(parents=True, exist_ok=True)
+        
+        with open(rounds_path / "strategies_r1.json", "w") as f:
+            json.dump(strategies_r1, f)
+        
+        # Run analysis
+        context = {ContextKeys.DATA_MANAGER: mock_data_manager}
+        result = await analysis_node.execute(context)
+        
+        assert "transcript_analysis" in result
+        report = result["transcript_analysis"]
+        
+        # Cross-model analysis should not exist
+        assert "cross_model_analysis" not in report
+    
+    def test_has_multiple_models(self, analysis_node):
+        """Test model detection logic."""
+        # Single model case
+        analysis_node.analysis_results["strategies_by_model"]["gpt-4"] = 10
+        assert not analysis_node._has_multiple_models()
+        
+        # Multiple models case
+        analysis_node.analysis_results["strategies_by_model"]["claude-3"] = 5
+        assert analysis_node._has_multiple_models()
+        
+        # Should ignore "unknown" model
+        analysis_node.analysis_results["strategies_by_model"] = {"unknown": 10}
+        assert not analysis_node._has_multiple_models()
+    
+    @pytest.mark.asyncio
+    async def test_cross_model_analysis_error_handling(self, analysis_node, mock_data_manager):
+        """Test error handling in cross-model analysis."""
+        # Create strategy files with missing data
+        strategies_r1 = {
+            "round": 1,
+            "strategies": [
+                {"agent_id": 0, "model": "gpt-4", "full_reasoning": "Test"},
+                {"agent_id": 1, "model": "claude-3", "full_reasoning": "Test"}
+            ]
+        }
+        
+        # Create invalid game files  
+        games_r1 = {
+            "round": 1,
+            "games": [
+                {"player1_id": 0}  # Missing required fields
+            ]
+        }
+        
+        rounds_path = mock_data_manager.experiment_path / "rounds"
+        rounds_path.mkdir(parents=True, exist_ok=True)
+        
+        with open(rounds_path / "strategies_r1.json", "w") as f:
+            json.dump(strategies_r1, f)
+        
+        with open(rounds_path / "games_r1.json", "w") as f:
+            json.dump(games_r1, f)
+        
+        # Run analysis - should handle errors gracefully
+        context = {ContextKeys.DATA_MANAGER: mock_data_manager}
+        result = await analysis_node.execute(context)
+        
+        assert "transcript_analysis" in result
+        report = result["transcript_analysis"]
+        
+        # Should still have cross-model analysis section
+        if "cross_model_analysis" in report:
+            cross_analysis = report["cross_model_analysis"]
+            # May have empty or error state
+            assert "cooperation_matrix" in cross_analysis
+    
+    def test_model_statistics_calculation(self, analysis_node):
+        """Test calculation of model-level statistics."""
+        from src.utils.cross_model_analyzer import CooperationStats
+        
+        # Mock cooperation stats
+        cooperation_stats = {
+            "gpt-4": {
+                "gpt-4": CooperationStats(
+                    cooperation_count=10,
+                    total_games=10,
+                    cooperation_rate=1.0,
+                    confidence_interval=(0.8, 1.0),
+                    sample_size=10
+                ),
+                "claude-3": CooperationStats(
+                    cooperation_count=5,
+                    total_games=10,
+                    cooperation_rate=0.5,
+                    confidence_interval=(0.3, 0.7),
+                    sample_size=10
+                )
+            }
+        }
+        
+        analyzer = Mock()
+        model_stats = analysis_node._calculate_model_statistics(analyzer, cooperation_stats)
+        
+        assert "gpt-4" in model_stats
+        assert model_stats["gpt-4"]["avg_cooperation"] == 0.75  # (10+5)/20
+        assert model_stats["gpt-4"]["total_games"] == 20
+    
+    def test_find_extreme_pairs(self, analysis_node):
+        """Test finding strongest and weakest cooperation pairs."""
+        from src.utils.cross_model_analyzer import CooperationStats
+        
+        cooperation_stats = {
+            "gpt-4": {
+                "gpt-4": CooperationStats(10, 10, 1.0, (0.8, 1.0), 10),
+                "claude-3": CooperationStats(2, 10, 0.2, (0.1, 0.3), 10)
+            },
+            "claude-3": {
+                "claude-3": CooperationStats(5, 10, 0.5, (0.3, 0.7), 10),
+                "gpt-4": CooperationStats(1, 10, 0.1, (0.0, 0.2), 10)
+            }
+        }
+        
+        strongest, weakest = analysis_node._find_extreme_pairs(cooperation_stats)
+        
+        assert strongest == ["gpt-4", "gpt-4"]
+        assert weakest == ["claude-3", "gpt-4"]
+    
+    def test_diversity_impact_calculation(self, analysis_node):
+        """Test model diversity impact calculation."""
+        # Significant positive bias
+        in_group_bias = {
+            "bias": 0.3,
+            "p_value": 0.01
+        }
+        
+        impact = analysis_node._calculate_diversity_impact({}, in_group_bias)
+        assert impact == -0.3  # Negative impact due to diversity
+        
+        # Non-significant bias
+        in_group_bias = {
+            "bias": 0.3,
+            "p_value": 0.1
+        }
+        
+        impact = analysis_node._calculate_diversity_impact({}, in_group_bias)
+        assert impact == -0.15  # Reduced impact due to non-significance
+        
+        # No bias
+        in_group_bias = {
+            "bias": None,
+            "p_value": None
+        }
+        
+        impact = analysis_node._calculate_diversity_impact({}, in_group_bias)
+        assert impact == 0.0
+    
+    @pytest.mark.asyncio
+    async def test_backward_compatibility(self, analysis_node, mock_data_manager):
+        """Test backward compatibility with experiments missing model info."""
+        # Create strategy files without model field
+        strategies_r1 = {
+            "round": 1,
+            "strategies": [
+                {
+                    "agent_id": 0,
+                    "round": 1,
+                    "full_reasoning": "Cooperation is best.",
+                    "strategy": "COOPERATE"
+                }
+            ]
+        }
+        
+        rounds_path = mock_data_manager.experiment_path / "rounds"
+        rounds_path.mkdir(parents=True, exist_ok=True)
+        
+        with open(rounds_path / "strategies_r1.json", "w") as f:
+            json.dump(strategies_r1, f)
+        
+        # Run analysis
+        context = {ContextKeys.DATA_MANAGER: mock_data_manager}
+        result = await analysis_node.execute(context)
+        
+        # Should complete without errors
+        assert "transcript_analysis" in result
+        report = result["transcript_analysis"]
+        
+        # Model should be tracked as "unknown"
+        assert "unknown" in report["acausal_analysis"]["model_specific_analysis"]["strategies_by_model"]
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import time
 
 from src.nodes.base import AsyncNode, ContextKeys
 from src.utils.data_manager import DataManager
+from src.utils.cross_model_analyzer import CrossModelAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,49 @@ class AnalysisNode(AsyncNode):
                 r"acausal",
                 r"one[- ]boxing",
                 r"newcomb"
+            ],
+            # Model-specific patterns added for Task 4
+            "gpt4_patterns": [
+                r"chain of thought",
+                r"step[- ]by[- ]step",
+                r"let me think",
+                r"breaking this down",
+                r"explicit.*calculat",
+                r"utility.{0,20}calculat",
+                r"payoff.{0,20}calculat",
+                r"expected.{0,20}value",
+                r"mathematically",
+                r"quantif(y|ied)",
+                r"numerically",
+                r"compute.{0,20}(payoff|utility|outcome)"
+            ],
+            "claude_patterns": [
+                r"constitutional",
+                r"principle[s]?",
+                r"ethical",
+                r"harm.{0,20}minimi",
+                r"minimize.{0,20}harm",
+                r"helpful.{0,20}harmless.{0,20}honest",
+                r"moral.{0,20}framework",
+                r"values?[- ]align",
+                r"responsible.{0,20}AI",
+                r"human.{0,20}values",
+                r"safety.{0,20}consider",
+                r"beneficen(ce|t)"
+            ],
+            "gemini_patterns": [
+                r"analyz(e|ing|ed)",
+                r"systematic(ally)?",
+                r"logical(ly)?",
+                r"therefore",
+                r"thus",
+                r"consequently",
+                r"structured.{0,20}approach",
+                r"methodical",
+                r"step[- ]wise",
+                r"framework",
+                r"categorical",
+                r"organized.{0,20}manner"
             ]
         }
         
@@ -141,8 +185,20 @@ class AnalysisNode(AsyncNode):
             for strategy_data in strategies:
                 self.analyze_transcript(strategy_data, round_num)
         
+        # Load game results for cross-model analysis
+        logger.info("Loading game results for cross-model analysis...")
+        games_by_round = await self.load_game_files(data_manager)
+        
+        # Perform cross-model analysis if we have multi-model data
+        cross_model_analysis = None
+        if self._has_multiple_models():
+            logger.info("Multiple models detected, performing cross-model analysis...")
+            cross_model_analysis = self._perform_cross_model_analysis(strategies_by_round, games_by_round)
+        else:
+            logger.info("Single model experiment detected, skipping cross-model analysis.")
+        
         # Generate final report
-        report = self.generate_analysis_report()
+        report = self.generate_analysis_report(cross_model_analysis)
         report["acausal_analysis"]["metadata"]["processing_stats"]["processing_time_seconds"] = time.time() - start_time
         
         # Save analysis results
@@ -202,6 +258,230 @@ class AnalysisNode(AsyncNode):
         
         return strategies_by_round
     
+    async def load_game_files(self, data_manager: DataManager) -> Dict[int, List[Dict]]:
+        """Load all game result files from the experiment.
+        
+        Args:
+            data_manager: DataManager instance for file operations
+            
+        Returns:
+            Dictionary mapping round numbers to game data
+        """
+        games_by_round = {}
+        rounds_path = data_manager.experiment_path / "rounds"
+        
+        if not rounds_path.exists():
+            logger.warning(f"Rounds directory not found: {rounds_path}")
+            return games_by_round
+        
+        # Find all game files
+        game_files = sorted(rounds_path.glob("games_r*.json"))
+        
+        for game_file in game_files:
+            try:
+                # Extract round number from filename
+                match = re.search(r"games_r(\d+)\.json", game_file.name)
+                if not match:
+                    logger.warning(f"Unexpected filename format: {game_file.name}")
+                    continue
+                
+                round_num = int(match.group(1))
+                
+                # Load game data
+                with open(game_file, 'r') as f:
+                    data = json.load(f)
+                
+                games = data.get("games", [])
+                if games:
+                    games_by_round[round_num] = games
+                
+            except Exception as e:
+                error_msg = f"Error loading {game_file}: {e}"
+                logger.error(error_msg)
+                self.errors.append(error_msg)
+        
+        return games_by_round
+    
+    def _has_multiple_models(self) -> bool:
+        """Check if the experiment has multiple model types.
+        
+        Returns:
+            True if multiple models are present
+        """
+        models = [m for m in self.analysis_results["strategies_by_model"].keys() if m != "unknown"]
+        return len(models) > 1
+    
+    def _perform_cross_model_analysis(
+        self, 
+        strategies_by_round: Dict[int, List[Dict]], 
+        games_by_round: Dict[int, List[Dict]]
+    ) -> Dict[str, Any]:
+        """Perform cross-model cooperation analysis.
+        
+        Args:
+            strategies_by_round: Strategy data by round
+            games_by_round: Game results by round
+            
+        Returns:
+            Cross-model analysis results
+        """
+        # Initialize analyzer
+        analyzer = CrossModelAnalyzer()
+        
+        # Flatten strategies and games for analysis
+        all_strategies = []
+        all_games = []
+        
+        for round_num in sorted(strategies_by_round.keys()):
+            all_strategies.extend(strategies_by_round[round_num])
+            if round_num in games_by_round:
+                all_games.extend(games_by_round[round_num])
+        
+        # Validate we have sufficient data
+        if not all_strategies or not all_games:
+            logger.warning("Insufficient data for cross-model analysis")
+            return {
+                "error": "Insufficient data",
+                "cooperation_matrix": {},
+                "in_group_bias": {},
+                "model_statistics": {},
+                "model_coalitions": {"detected": False, "coalition_groups": []},
+                "visualization_data": {}
+            }
+        
+        # Load data into analyzer
+        analyzer.load_data(all_games, all_strategies)
+        
+        # Perform all analyses
+        try:
+            cooperation_matrix = analyzer.calculate_cooperation_matrix()
+            cooperation_stats = analyzer.get_cooperation_stats()
+            in_group_bias = analyzer.detect_in_group_bias()
+            coalitions = analyzer.analyze_model_coalitions()
+            visualization_data = analyzer.generate_heatmap_data()
+            
+            # Calculate additional statistics
+            model_statistics = self._calculate_model_statistics(analyzer, cooperation_stats)
+            
+            # Find strongest and weakest cooperation pairs
+            strongest_pair, weakest_pair = self._find_extreme_pairs(cooperation_stats)
+            
+            # Calculate model diversity impact
+            diversity_impact = self._calculate_diversity_impact(cooperation_stats, in_group_bias)
+            
+            # Calculate comprehensive statistics
+            avg_cooperation_by_model = analyzer.calculate_average_cooperation_by_model()
+            diversity_metrics = analyzer.compute_model_diversity_impact()
+            sample_warnings = analyzer.get_sample_size_warnings()
+            coalition_emergence = analyzer.track_coalition_emergence()
+            statistical_power = analyzer.calculate_statistical_power()
+            
+            return {
+                "cooperation_matrix": cooperation_matrix.to_dict(),
+                "in_group_bias": in_group_bias,
+                "model_statistics": model_statistics,
+                "avg_cooperation_by_model": avg_cooperation_by_model,
+                "strongest_cooperation_pair": strongest_pair,
+                "weakest_cooperation_pair": weakest_pair,
+                "model_diversity_impact": diversity_impact,
+                "diversity_metrics": diversity_metrics,
+                "model_coalitions": coalitions,
+                "coalition_emergence": coalition_emergence,
+                "sample_size_warnings": sample_warnings,
+                "statistical_power": statistical_power,
+                "visualization_data": visualization_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in cross-model analysis: {e}")
+            return {
+                "error": str(e),
+                "cooperation_matrix": {},
+                "in_group_bias": {},
+                "model_statistics": {},
+                "model_coalitions": {"detected": False, "coalition_groups": []},
+                "visualization_data": {}
+            }
+    
+    def _calculate_model_statistics(self, analyzer: CrossModelAnalyzer, cooperation_stats: Dict) -> Dict[str, Any]:
+        """Calculate per-model cooperation statistics.
+        
+        Args:
+            analyzer: CrossModelAnalyzer instance
+            cooperation_stats: Cooperation statistics by model pair
+            
+        Returns:
+            Model-level statistics
+        """
+        # Use analyzer's method instead of duplicating logic
+        return analyzer.calculate_average_cooperation_by_model()
+    
+    def _find_extreme_pairs(self, cooperation_stats: Dict) -> Tuple[Optional[List[str]], Optional[List[str]]]:
+        """Find the strongest and weakest cooperation pairs.
+        
+        Args:
+            cooperation_stats: Cooperation statistics by model pair
+            
+        Returns:
+            Tuple of (strongest_pair, weakest_pair)
+        """
+        all_pairs = []
+        
+        for model1, model2_stats in cooperation_stats.items():
+            for model2, stats in model2_stats.items():
+                if stats.total_games > 0:
+                    all_pairs.append({
+                        "models": sorted([model1, model2]),
+                        "rate": stats.cooperation_rate,
+                        "games": stats.total_games
+                    })
+        
+        if not all_pairs:
+            return None, None
+        
+        # Sort by cooperation rate
+        all_pairs.sort(key=lambda x: x["rate"], reverse=True)
+        
+        # Get pairs with sufficient data (at least 5 games)
+        significant_pairs = [p for p in all_pairs if p["games"] >= 5]
+        
+        if significant_pairs:
+            strongest = significant_pairs[0]["models"]
+            weakest = significant_pairs[-1]["models"]
+        else:
+            # Fall back to any pairs if no significant data
+            strongest = all_pairs[0]["models"] if all_pairs else None
+            weakest = all_pairs[-1]["models"] if all_pairs else None
+        
+        return strongest, weakest
+    
+    def _calculate_diversity_impact(self, cooperation_stats: Dict, in_group_bias: Dict) -> float:
+        """Calculate the impact of model diversity on overall cooperation.
+        
+        Args:
+            cooperation_stats: Cooperation statistics by model pair
+            in_group_bias: In-group bias analysis results
+            
+        Returns:
+            Diversity impact score (negative means diversity reduces cooperation)
+        """
+        if not in_group_bias.get("bias") or in_group_bias["bias"] is None:
+            return 0.0
+        
+        # If there's positive in-group bias, diversity has negative impact
+        # The stronger the bias, the more negative the impact
+        bias = in_group_bias["bias"]
+        
+        # Scale the impact based on statistical significance
+        if in_group_bias.get("p_value") and in_group_bias["p_value"] < 0.05:
+            # Statistically significant bias
+            impact = -abs(bias)
+        else:
+            # Not significant, reduce impact
+            impact = -abs(bias) * 0.5
+        
+        return round(impact, 3)
+    
     def analyze_transcript(self, strategy_data: Dict[str, Any], round_num: int) -> Dict[str, int]:
         """Analyze a single strategy transcript for markers.
         
@@ -231,12 +511,24 @@ class AnalysisNode(AsyncNode):
         
         # Check each marker category
         for category, patterns in self.marker_patterns.items():
+            # Skip model-specific patterns if they don't match current model
+            if category == "gpt4_patterns" and "gpt-4" not in model.lower():
+                continue
+            elif category == "claude_patterns" and "claude" not in model.lower():
+                continue
+            elif category == "gemini_patterns" and "gemini" not in model.lower():
+                continue
+            
             for pattern in patterns:
                 matches = list(re.finditer(pattern, reasoning, re.IGNORECASE))
                 
                 for match in matches:
                     transcript_markers[category] += 1
-                    self.analysis_results[f"{category}_count"] += 1
+                    
+                    # Only update main counts for non-model-specific patterns
+                    if category not in ["gpt4_patterns", "claude_patterns", "gemini_patterns"]:
+                        self.analysis_results[f"{category}_count"] += 1
+                    
                     self.analysis_results["markers_by_model"][model][category] += 1  # Track by model
                     
                     # Extract quote with context
@@ -251,6 +543,9 @@ class AnalysisNode(AsyncNode):
                     )
                     
                     # Add to examples if not already at max
+                    if category not in self.analysis_results["marker_examples"]:
+                        self.analysis_results["marker_examples"][category] = []
+                    
                     if len(self.analysis_results["marker_examples"][category]) < self.config["max_quotes_per_category"]:
                         self.analysis_results["marker_examples"][category].append(quote_data)
                     
@@ -358,25 +653,15 @@ class AnalysisNode(AsyncNode):
         if pattern_key not in self.analysis_results["model_specific_patterns"][model]:
             self.analysis_results["model_specific_patterns"][model].append(pattern_key)
         
-        # Detect model-specific behaviors mentioned in Epic 6
-        if "gpt-4" in model.lower():
-            # GPT-4: explicit utility calculation patterns
-            if re.search(r"utility|payoff|score|calculate", reasoning, re.IGNORECASE):
-                self.analysis_results["markers_by_model"][model]["utility_calculation"] += 1
-        
-        elif "claude" in model.lower():
-            # Claude: constitutional principles
-            if re.search(r"principle|ethical|harm|constitution", reasoning, re.IGNORECASE):
-                self.analysis_results["markers_by_model"][model]["constitutional_reasoning"] += 1
-        
-        elif "gemini" in model.lower():
-            # Gemini: analytical patterns
-            if re.search(r"analyze|systematic|logical|therefore", reasoning, re.IGNORECASE):
-                self.analysis_results["markers_by_model"][model]["analytical_approach"] += 1
+        # The model-specific patterns are now handled directly in analyze_transcript
+        # This method now focuses on tracking unique pattern usage per model
     
-    def generate_analysis_report(self) -> Dict[str, Any]:
+    def generate_analysis_report(self, cross_model_analysis: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Generate the final analysis report with model-specific insights.
         
+        Args:
+            cross_model_analysis: Optional cross-model analysis results
+            
         Returns:
             Complete analysis report with all results
         """
@@ -429,6 +714,10 @@ class AnalysisNode(AsyncNode):
                 "timestamp": datetime.now().isoformat()
             }
         }
+        
+        # Add cross-model analysis if available
+        if cross_model_analysis:
+            report["cross_model_analysis"] = cross_model_analysis
         
         return report
     
@@ -525,14 +814,14 @@ class AnalysisNode(AsyncNode):
             
             # Add behavioral notes based on model type
             if "gpt-4" in model.lower():
-                if "utility_calculation" in markers:
-                    insight["behavioral_notes"] = f"GPT-4 showed explicit utility calculation in {markers['utility_calculation']} strategies"
+                if "gpt4_patterns" in markers:
+                    insight["behavioral_notes"] = f"GPT-4 showed characteristic patterns (chain of thought, utility calculation) in {markers['gpt4_patterns']} instances"
             elif "claude" in model.lower():
-                if "constitutional_reasoning" in markers:
-                    insight["behavioral_notes"] = f"Claude exhibited constitutional reasoning in {markers['constitutional_reasoning']} strategies"
+                if "claude_patterns" in markers:
+                    insight["behavioral_notes"] = f"Claude exhibited constitutional/ethical reasoning patterns in {markers['claude_patterns']} instances"
             elif "gemini" in model.lower():
-                if "analytical_approach" in markers:
-                    insight["behavioral_notes"] = f"Gemini demonstrated analytical approach in {markers['analytical_approach']} strategies"
+                if "gemini_patterns" in markers:
+                    insight["behavioral_notes"] = f"Gemini demonstrated analytical/systematic approach in {markers['gemini_patterns']} instances"
             
             insights[model] = insight
         
