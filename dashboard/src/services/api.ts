@@ -114,6 +114,12 @@ class ApiClient {
   async getCurrentUser() {
     return this.request<any>('/auth/me')
   }
+
+  async getGameResults(experimentId: string) {
+    return retry(() => 
+      this.request<any[]>(`/experiments/${experimentId}/games`)
+    )
+  }
 }
 
 export const api = new ApiClient({

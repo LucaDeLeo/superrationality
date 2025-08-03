@@ -34,6 +34,7 @@ export interface GameResult {
   agent1_score: number
   agent2_score: number
   outcome: string
+  round_number?: number
 }
 
 export interface RoundSummary {
