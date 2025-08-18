@@ -2,65 +2,67 @@
 
 ## Technical Summary
 
-The Acausal Cooperation Experiment employs a modular Python-based architecture using an async flow framework to orchestrate prisoner's dilemma tournaments between LLM agents. The system leverages OpenRouter API for multi-model LLM access, implements a hierarchical node-based execution pattern for experiment orchestration, and outputs comprehensive JSON datasets for analysis. The architecture prioritizes simplicity, clear separation of concerns, and robust data collection to enable statistical analysis of superrational cooperation patterns. This design achieves the PRD goals by providing a controlled experimental environment with minimal external dependencies while maintaining flexibility for future experiments.
+The Acausal Cooperation Experiment employs a modular Python-based architecture using an async flow framework to orchestrate prisoner's dilemma tournaments between LLM agents. The system leverages OpenRouter API for LLM access, implements a hierarchical node-based execution pattern for experiment orchestration, and outputs comprehensive JSON datasets for analysis. The architecture prioritizes simplicity, clear separation of concerns, and robust data collection to enable statistical analysis of superrational cooperation patterns. This design achieves the PRD goals by providing a controlled experimental environment with minimal external dependencies.
 
 ## Platform and Infrastructure Choice
 
 **Platform:** Local Python Environment with Cloud API Access
-**Key Services:** OpenRouter API (LLM access), Local filesystem (data storage), Python async runtime
-**Deployment Host and Regions:** Local development machine with internet access for API calls
+- Chosen for rapid development and iteration
+- No infrastructure management overhead
+- Direct control over execution and debugging
 
-## Repository Structure
+**API Provider:** OpenRouter
+- Unified access to multiple LLM models through single API
+- Simplified billing and rate limiting
+- Consistent interface across different model providers
 
-**Structure:** Single Python Project (Simple Structure)
-**Monorepo Tool:** N/A - Single project structure
-**Package Organization:** Modular Python packages organized by functionality (nodes, flows, analysis)
+**Storage:** Local JSON Files
+- Simple, human-readable format
+- No database complexity for small datasets
+- Easy version control and sharing
 
-## High Level Architecture Diagram
+## System Architecture Diagram
 
 ```mermaid
 graph TB
-    subgraph "Experiment Controller"
+    subgraph "Orchestration Layer"
         A[run_experiment.py] --> B[ExperimentFlow]
-        B --> C[RoundFlow x10]
-    end
-    
-    subgraph "Round Execution"
+        B --> C[RoundFlow]
         C --> D[StrategyCollectionNode]
         C --> E[GameExecutionFlow]
-        C --> F[AnonymizationNode]
+        C --> F[RoundSummaryNode]
     end
     
-    subgraph "Game Logic"
-        E --> G[SubagentDecisionNode x2]
-        G --> H[Power Evolution]
-        G --> I[Payoff Calculation]
+    subgraph "Execution Layer"
+        D --> G[API Client]
+        E --> H[SubagentDecisionNode]
+        H --> G
     end
     
-    subgraph "External APIs"
-        D --> J[OpenRouter API<br/>Gemini 2.5 Flash]
-        G --> K[OpenRouter API<br/>GPT-4.1 Nano]
+    subgraph "External Services"
+        G --> I[OpenRouter API]
+        I --> J[LLM Models]
     end
     
-    subgraph "Data Storage"
-        F --> L[JSON Files]
-        E --> L
-        D --> L
+    subgraph "Storage Layer"
+        B --> K[DataManager]
+        K --> L[JSON Files]
+    end
+    
+    subgraph "Post-Processing"
         B --> M[Experiment Results]
     end
-    
+
     subgraph "Analysis"
-        M --> N[AnalysisNode]
-        N --> O[Acausal Patterns]
-        N --> P[Statistical Reports]
+        M --> N[SimpleAnalysisNode]
+        N --> O[Acausal Markers]
+        N --> P[Cooperation Stats]
     end
 ```
 
 ## Architectural Patterns
 
-- **Async Flow Pattern:** Hierarchical async flows orchestrate experiment phases - _Rationale:_ Enables parallel API calls and clean separation of experiment phases
-- **Node-Based Architecture:** Each logical operation encapsulated in a node class - _Rationale:_ Promotes reusability, testability, and clear boundaries between components
-- **Strategy-Executor Separation:** Main agents create strategies, subagents execute them - _Rationale:_ Mimics real-world delegation and prevents direct game-playing by strategy agents
-- **Immutable Game History:** Append-only game records with anonymization layer - _Rationale:_ Ensures experimental integrity while protecting agent identity for unbiased decisions
-- **JSON-First Data Storage:** All outputs stored as structured JSON files - _Rationale:_ Enables easy analysis with standard tools and preserves complete experimental data
-- **Stateless API Integration:** Each API call is independent with retry logic - _Rationale:_ Handles API failures gracefully without corrupting experiment state
+1. **Node-Based Execution**: Each major operation is encapsulated in a node with standard interfaces
+2. **Async/Await Concurrency**: Parallel API calls for strategy collection
+3. **Flow Orchestration**: Hierarchical flows manage complex multi-step processes
+4. **Separation of Concerns**: Clear boundaries between orchestration, execution, and storage

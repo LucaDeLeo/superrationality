@@ -1,40 +1,25 @@
 # Product Requirements Document
-## Focused Acausal Cooperation Experiment
 
-### Project Overview
-**Project Name:** Acausal Cooperation Experiment  
-**Project Type:** Greenfield Research Application  
-**Primary Goal:** Test whether identical LLM agents achieve superrational cooperation through recognition of logical correlation in prisoner's dilemma tournaments.
+## Table of Contents
 
-### Executive Summary
-A single Python project using a node-based framework to orchestrate API calls and game logic. The experiment runs 10 agents through 10 rounds of prisoner's dilemma tournaments, testing for emergent cooperation patterns among identical AI systems. Outputs JSON files with complete experimental data for analysis.
-
-### Document Structure
-
-#### Core Documentation
-- [Full PRD Document](./focused-acausal-cooperation-experiment.md) - Complete requirements specification
-- [Technical Specifications](./focused-acausal-cooperation-experiment.md#technical-specifications) - Stack, data models, APIs
-- [Implementation Timeline](./focused-acausal-cooperation-experiment.md#implementation-timeline) - 3-week plan
-
-#### Epic Breakdown
-- [Epic 1: Core Experiment Framework](./epic-1-core-experiment-framework.md) - P0 Critical
-- [Epic 2: Strategy Collection System](./epic-2-strategy-collection-system.md) - P0 Critical  
-- [Epic 3: Game Execution Engine](./epic-3-game-execution-engine.md) - P0 Critical
-- [Epic 4: Data Management & Anonymization](./epic-4-data-management-anonymization.md) - P1 High
-- [Epic 5: Analysis & Pattern Detection](./epic-5-analysis-pattern-detection.md) - P1 High
-
-### Quick Links
-- **Total Stories:** 14 user stories across 5 epics
-- **Priority Breakdown:** 9 P0 stories, 5 P1 stories
-- **Estimated Cost:** ~$5 per experiment run
-- **Timeline:** 3 weeks to complete implementation
-
-### Development Workflow
-1. Start with Epic 1 (Core Framework) - Required foundation
-2. Implement Epics 2 & 3 in parallel - Both P0 critical
-3. Add Epic 4 (Data Management) - Enables full experiments
-4. Complete with Epic 5 (Analysis) - Extracts insights
-
----
-*Document Version: 1.0*  
-*Status: Sharded and Ready for Story Creation*
+- [Product Requirements Document](#table-of-contents)
+  - [Focused Acausal Cooperation Experiment](./focused-acausal-cooperation-experiment.md)
+    - [Project Overview](./focused-acausal-cooperation-experiment.md#project-overview)
+    - [Executive Summary](./focused-acausal-cooperation-experiment.md#executive-summary)
+    - [Key Features & Requirements](./focused-acausal-cooperation-experiment.md#key-features-requirements)
+      - [Epic 1: Core Experiment Framework](./focused-acausal-cooperation-experiment.md#epic-1-core-experiment-framework)
+      - [Epic 2: Strategy Collection System](./focused-acausal-cooperation-experiment.md#epic-2-strategy-collection-system)
+      - [Epic 3: Game Execution Engine](./focused-acausal-cooperation-experiment.md#epic-3-game-execution-engine)
+      - [Epic 4: Data Management & Anonymization](./focused-acausal-cooperation-experiment.md#epic-4-data-management-anonymization)
+      - [Epic 5: Analysis & Pattern Detection](./focused-acausal-cooperation-experiment.md#epic-5-analysis-pattern-detection)
+    - [Technical Specifications](./focused-acausal-cooperation-experiment.md#technical-specifications)
+      - [Technology Stack](./focused-acausal-cooperation-experiment.md#technology-stack)
+      - [Data Models](./focused-acausal-cooperation-experiment.md#data-models)
+      - [API Specifications](./focused-acausal-cooperation-experiment.md#api-specifications)
+    - [Implementation Timeline](./focused-acausal-cooperation-experiment.md#implementation-timeline)
+    - [Success Metrics](./focused-acausal-cooperation-experiment.md#success-metrics)
+    - [Constraints & Limitations](./focused-acausal-cooperation-experiment.md#constraints-limitations)
+    - [Risk Mitigation](./focused-acausal-cooperation-experiment.md#risk-mitigation)
+    - [Future Enhancements (Out of Scope)](./focused-acausal-cooperation-experiment.md#future-enhancements-out-of-scope)
+    - [Acceptance Criteria](./focused-acausal-cooperation-experiment.md#acceptance-criteria)
+    - [Dependencies](./focused-acausal-cooperation-experiment.md#dependencies)
