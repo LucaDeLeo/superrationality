@@ -102,7 +102,7 @@ A single Python project using a node-based framework to orchestrate API calls an
 - **API Integration:** OpenRouter API
 - **Models:**
   - Main Agent: google/gemini-2.5-flash
-  - Subagent: openai/gpt-4.1-nano
+  - Subagent: openai/GPT-4.1-nano
 - **Key Libraries:** asyncio, numpy, sklearn, openai
 
 ### Data Models
