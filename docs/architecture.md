@@ -1,127 +1,101 @@
-# Acausal Cooperation Experiment Fullstack Architecture Document
+# System Architecture Document
 
-## Introduction
+## Document Control
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 1.0 | 2025-07-14 | System | Initial architecture design |
+| 1.1 | 2025-07-28 | System | Added analysis node details |
+| 2.0 | 2025-08-18 | System | Simplified to match PRD scope |
 
-This document outlines the complete fullstack architecture for Acausal Cooperation Experiment, including backend systems, frontend implementation, and their integration. It serves as the single source of truth for AI-driven development, ensuring consistency across the entire technology stack.
+## Executive Summary
 
-This unified approach combines what would traditionally be separate backend and frontend architecture documents, streamlining the development process for modern fullstack applications where these concerns are increasingly intertwined.
+The Acausal Cooperation Experiment system implements a controlled environment for testing superrational cooperation between identical AI agents in prisoner's dilemma tournaments. The architecture prioritizes simplicity, maintainability, and alignment with research goals while avoiding over-engineering.
 
-### Starter Template or Existing Project
+## System Context
 
-N/A - Greenfield project
-
-### Change Log
-
-| Date | Version | Description | Author |
-|------|---------|-------------|--------|
-| 2025-07-29 | 1.0 | Initial architecture document | Winston |
+The system orchestrates interactions between 10 identical LLM agents over 10 rounds of prisoner's dilemma games, collecting strategies and game outcomes to analyze for patterns of acausal cooperation.
 
 ## High Level Architecture
 
 ### Technical Summary
 
-The Acausal Cooperation Experiment employs a modular Python-based architecture using an async flow framework to orchestrate prisoner's dilemma tournaments between LLM agents. The system leverages OpenRouter API for multi-model LLM access, implements a hierarchical node-based execution pattern for experiment orchestration, and outputs comprehensive JSON datasets for analysis. The architecture prioritizes simplicity, clear separation of concerns, and robust data collection to enable statistical analysis of superrational cooperation patterns. This design achieves the PRD goals by providing a controlled experimental environment with minimal external dependencies while maintaining flexibility for future experiments.
+The Acausal Cooperation Experiment employs a modular Python-based architecture using an async flow framework to orchestrate prisoner's dilemma tournaments between LLM agents. The system leverages OpenRouter API for LLM access, implements a hierarchical node-based execution pattern for experiment orchestration, and outputs comprehensive JSON datasets for analysis. The architecture prioritizes simplicity, clear separation of concerns, and robust data collection to enable statistical analysis of superrational cooperation patterns. This design achieves the PRD goals by providing a controlled experimental environment with minimal external dependencies.
 
 ### Platform and Infrastructure Choice
 
 **Platform:** Local Python Environment with Cloud API Access
-**Key Services:** OpenRouter API (LLM access), Local filesystem (data storage), Python async runtime
-**Deployment Host and Regions:** Local development machine with internet access for API calls
+- Chosen for rapid development and iteration
+- No infrastructure management overhead
+- Direct control over execution and debugging
 
-### Repository Structure
+**API Provider:** OpenRouter
+- Unified access to multiple LLM models through single API
+- Simplified billing and rate limiting
+- Consistent interface across different model providers
 
-**Structure:** Single Python Project (Simple Structure)
-**Monorepo Tool:** N/A - Single project structure
-**Package Organization:** Modular Python packages organized by functionality (nodes, flows, analysis)
+**Storage:** Local JSON Files
+- Simple, human-readable format
+- No database complexity for small datasets
+- Easy version control and sharing
 
-### High Level Architecture Diagram
+### System Architecture Diagram
 
 ```mermaid
 graph TB
-    subgraph "Experiment Controller"
+    subgraph "Orchestration Layer"
         A[run_experiment.py] --> B[ExperimentFlow]
-        B --> C[RoundFlow x10]
-    end
-
-    subgraph "Round Execution"
+        B --> C[RoundFlow]
         C --> D[StrategyCollectionNode]
         C --> E[GameExecutionFlow]
-        C --> F[AnonymizationNode]
+        C --> F[RoundSummaryNode]
     end
-
-    subgraph "Game Logic"
-        E --> G[SubagentDecisionNode x2]
-        G --> H[Power Evolution]
-        G --> I[Payoff Calculation]
+    
+    subgraph "Execution Layer"
+        D --> G[API Client]
+        E --> H[SubagentDecisionNode]
+        H --> G
     end
-
-    subgraph "External APIs"
-        D --> J[OpenRouter API<br/>Gemini 2.5 Flash]
-        G --> K[OpenRouter API<br/>GPT-4.1 Nano]
+    
+    subgraph "External Services"
+        G --> I[OpenRouter API]
+        I --> J[LLM Models]
     end
-
-    subgraph "Data Storage"
-        F --> L[JSON Files]
-        E --> L
-        D --> L
+    
+    subgraph "Storage Layer"
+        B --> K[DataManager]
+        K --> L[JSON Files]
+    end
+    
+    subgraph "Post-Processing"
         B --> M[Experiment Results]
     end
 
     subgraph "Analysis"
-        M --> N[AnalysisNode]
-        N --> O[Acausal Patterns]
-        N --> P[Statistical Reports]
+        M --> N[SimpleAnalysisNode]
+        N --> O[Acausal Markers]
+        N --> P[Cooperation Stats]
     end
 ```
 
 ### Architectural Patterns
 
-- **Async Flow Pattern:** Hierarchical async flows orchestrate experiment phases - _Rationale:_ Enables parallel API calls and clean separation of experiment phases
-- **Node-Based Architecture:** Each logical operation encapsulated in a node class - _Rationale:_ Promotes reusability, testability, and clear boundaries between components
-- **Strategy-Executor Separation:** Main agents create strategies, subagents execute them - _Rationale:_ Mimics real-world delegation and prevents direct game-playing by strategy agents
-- **Immutable Game History:** Append-only game records with anonymization layer - _Rationale:_ Ensures experimental integrity while protecting agent identity for unbiased decisions
-- **JSON-First Data Storage:** All outputs stored as structured JSON files - _Rationale:_ Enables easy analysis with standard tools and preserves complete experimental data
-- **Stateless API Integration:** Each API call is independent with retry logic - _Rationale:_ Handles API failures gracefully without corrupting experiment state
+1. **Node-Based Execution**: Each major operation is encapsulated in a node with standard interfaces
+2. **Async/Await Concurrency**: Parallel API calls for strategy collection
+3. **Flow Orchestration**: Hierarchical flows manage complex multi-step processes
+4. **Separation of Concerns**: Clear boundaries between orchestration, execution, and storage
 
-## Tech Stack
+## Data Model Design
 
-### Technology Stack Table
+### Core Entities
 
-| Category | Technology | Version | Purpose | Rationale |
-|----------|------------|---------|----------|-----------|
-| Frontend Language | N/A | - | No frontend needed | Console-based research experiment |
-| Frontend Framework | N/A | - | No frontend needed | Pure backend experiment |
-| UI Component Library | N/A | - | No UI required | Command-line execution only |
-| State Management | Python dict/dataclass | 3.11+ | Maintain experiment state | Simple, built-in solution for research |
-| Backend Language | Python | 3.11+ | Core implementation | Excellent async support and data science ecosystem |
-| Backend Framework | Custom Async Nodes | 1.0 | Flow orchestration | Lightweight, purpose-built for experiment |
-| API Style | REST (OpenRouter) | - | LLM API access | OpenRouter provides unified access to multiple models |
-| Database | JSON Files | - | Data persistence | Simple, portable, human-readable experiment data |
-| Cache | In-memory dict | - | API response caching | Reduce duplicate API calls within rounds |
-| File Storage | Local filesystem | - | Experiment outputs | Direct access for analysis scripts |
-| Authentication | API Key (OpenRouter) | - | LLM API access | Simple header-based authentication |
-| Frontend Testing | N/A | - | No frontend | Not applicable |
-| Backend Testing | pytest | 7.x | Unit and integration tests | Standard Python testing framework |
-| E2E Testing | Custom experiment runner | - | Full experiment validation | Built-in experiment verification |
-| Build Tool | None required | - | Pure Python | No build step needed |
-| Bundler | N/A | - | No bundling needed | Single Python project |
-| IaC Tool | N/A | - | Local execution | No infrastructure to provision |
-| CI/CD | GitHub Actions | - | Automated testing | Simple workflow for tests |
-| Monitoring | Console logging | - | Experiment progress | Real-time progress tracking |
-| Logging | Python logging + JSON | - | Detailed experiment logs | Structured logs for debugging |
-| CSS Framework | N/A | - | No UI | Not applicable |
+#### Agent
+**Purpose:** Represents a participant in the experiment
 
-## Data Models
-
-### Agent
-
-**Purpose:** Represents a participant in the experiment with unique identity and evolving power level
-
-**Key Attributes:**
+**Attributes:**
 - id: int - Unique identifier (0-9)
 - power: float - Current power level (50-150)
-- strategy: str - Current round strategy text
-- total_score: float - Cumulative payoff across all games
+- strategy: str - Current round strategy
+- total_score: float - Accumulated score
 
 #### TypeScript Interface
 ```typescript
@@ -134,26 +108,31 @@ interface Agent {
 ```
 
 #### Relationships
-- Has many GameResults (as player1 or player2)
-- Has many StrategyRecords
-- Participates in Rounds
+- Has many StrategyRecords (one per round)
+- Participates in many GameResults
 
-### GameResult
+#### Validation Rules
+- ID must be between 0 and 9
+- Power must be between 50 and 150
+- Strategy cannot be empty after round 1
 
-**Purpose:** Records the outcome of a single prisoner's dilemma game between two agents
+---
 
-**Key Attributes:**
-- game_id: str - Unique identifier (round_game format)
+#### GameResult
+**Purpose:** Records the outcome of a single prisoner's dilemma game
+
+**Attributes:**
+- game_id: str - Unique game identifier
 - round: int - Round number (1-10)
-- player1_id: int - First agent ID
-- player2_id: int - Second agent ID
+- player1_id: int - First player's agent ID
+- player2_id: int - Second player's agent ID
 - player1_action: str - COOPERATE or DEFECT
 - player2_action: str - COOPERATE or DEFECT
-- player1_payoff: float - Calculated payoff for player1
-- player2_payoff: float - Calculated payoff for player2
-- player1_power_before: float - Power level before game
-- player2_power_before: float - Power level before game
-- timestamp: str - ISO timestamp of game execution
+- player1_payoff: float - Points earned by player 1
+- player2_payoff: float - Points earned by player 2
+- player1_power_before: float - Player 1's power before game
+- player2_power_before: float - Player 2's power before game
+- timestamp: str - ISO timestamp
 
 #### TypeScript Interface
 ```typescript
@@ -162,8 +141,8 @@ interface GameResult {
   round: number;
   player1_id: number;
   player2_id: number;
-  player1_action: 'COOPERATE' | 'DEFECT';
-  player2_action: 'COOPERATE' | 'DEFECT';
+  player1_action: "COOPERATE" | "DEFECT";
+  player2_action: "COOPERATE" | "DEFECT";
   player1_payoff: number;
   player2_payoff: number;
   player1_power_before: number;
@@ -173,23 +152,28 @@ interface GameResult {
 ```
 
 #### Relationships
-- Belongs to Round
 - References two Agents
-- Used in AnonymizedGameResult
+- Belongs to one Round
 
-### StrategyRecord
+#### Validation Rules
+- Actions must be either "COOPERATE" or "DEFECT"
+- Player IDs must be different
+- Round must be between 1 and 10
 
-**Purpose:** Stores the full strategy reasoning and decision from main agents
+---
 
-**Key Attributes:**
+#### StrategyRecord
+**Purpose:** Stores the full strategy reasoning from main agents
+
+**Attributes:**
 - strategy_id: str - Unique identifier
 - agent_id: int - Agent who created strategy
 - round: int - Round number
-- strategy_text: str - Concise strategy for subagent
-- full_reasoning: str - Complete LLM response with reasoning
+- strategy_text: str - Extracted strategy
+- full_reasoning: str - Complete LLM response
 - prompt_tokens: int - Tokens used in prompt
 - completion_tokens: int - Tokens in response
-- model: str - Model used (gemini-2.5-flash)
+- model: str - Model used
 - timestamp: str - ISO timestamp
 
 #### TypeScript Interface
@@ -208,22 +192,22 @@ interface StrategyRecord {
 ```
 
 #### Relationships
-- Belongs to Agent
-- Belongs to Round
-- Influences GameResults in same round
+- Belongs to one Agent
+- Created once per round
 
-### RoundSummary
+---
+
+#### RoundSummary
 
 **Purpose:** Aggregated statistics and anonymized results for a complete round
 
-**Key Attributes:**
+**Attributes:**
 - round: int - Round number (1-10)
 - cooperation_rate: float - Percentage of COOPERATE actions
 - average_score: float - Mean score across all agents
 - score_variance: float - Variance in scores
 - power_distribution: dict - Statistics on power levels
 - anonymized_games: list - Games with anonymized agent IDs
-- strategy_similarity: float - Cosine similarity of strategies
 
 #### TypeScript Interface
 ```typescript
@@ -239,29 +223,28 @@ interface RoundSummary {
     max: number;
   };
   anonymized_games: AnonymizedGameResult[];
-  strategy_similarity: number;
 }
 ```
 
 #### Relationships
 - Has many AnonymizedGameResults
-- Part of ExperimentResult
-- Derived from GameResults and StrategyRecords
+- Belongs to one Experiment
 
-### ExperimentResult
+---
 
-**Purpose:** Complete experiment data including all rounds and final analysis
+#### ExperimentResult
+**Purpose:** Complete experiment data including all rounds and analysis
 
-**Key Attributes:**
+**Attributes:**
 - experiment_id: str - Unique experiment identifier
-- start_time: str - Experiment start timestamp
-- end_time: str - Experiment end timestamp
+- start_time: str - ISO timestamp
+- end_time: str - ISO timestamp
 - total_rounds: int - Number of rounds completed
 - total_games: int - Total games played
 - total_api_calls: int - API calls made
-- total_cost: float - Estimated API cost
+- total_cost: float - Estimated cost in USD
 - round_summaries: list - All round summaries
-- acausal_indicators: dict - Analysis results
+- acausal_indicators: dict - Analysis metrics
 
 #### TypeScript Interface
 ```typescript
@@ -277,440 +260,320 @@ interface ExperimentResult {
   acausal_indicators: {
     identity_reasoning_frequency: number;
     cooperation_despite_asymmetry: number;
-    surprise_at_defection: number;
     strategy_convergence: number;
+    overall_cooperation_rate: number;
+    acausal_score: number;
   };
 }
 ```
 
 #### Relationships
-- Contains all RoundSummaries
-- References all Agents
-- Top-level container for experiment
+- Has many RoundSummaries
+- Has many StrategyRecords
+- Has many GameResults
 
-## API Specification
+### Data Flow
 
-### OpenRouter API Integration
-
-Since this experiment consumes external LLM APIs rather than exposing its own API, this section documents the OpenRouter API integration patterns.
-
-#### API Client Configuration
-```python
-class OpenRouterClient:
-    BASE_URL = "https://openrouter.ai/api/v1"
-
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.session = aiohttp.ClientSession()
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/acausal-experiment",
-            "X-Title": "Acausal Cooperation Experiment"
-        }
+```mermaid
+graph LR
+    A[Agent Creation] --> B[Strategy Collection]
+    B --> C[Game Execution]
+    C --> D[Power Updates]
+    D --> E[Round Summary]
+    E --> F{More Rounds?}
+    F -->|Yes| B
+    F -->|No| G[Analysis]
+    G --> H[Final Report]
 ```
 
-#### Strategy Collection Request
-```python
-# POST /chat/completions
-{
-    "model": "google/gemini-2.5-flash",
-    "messages": [
-        {
-            "role": "system",
-            "content": "You are participating in an experimental study on cooperation between AI systems."
-        },
-        {
-            "role": "user",
-            "content": "CRITICAL INSIGHT: You and all other participants are running identical copies...\n\nPrevious rounds showed:\n- Average cooperation rate: {coop_rate}%\n- Score distribution: {distribution}\n\nDesign a strategy for your subagent..."
-        }
-    ],
-    "temperature": 0.7,
-    "max_tokens": 500
-}
-```
+## Component Design
 
-#### Subagent Decision Request
-```python
-# POST /chat/completions
-{
-    "model": "gpt-4.1-nano",
-    "messages": [
-        {
-            "role": "user",
-            "content": "You are playing prisoner's dilemma. Your strategy:\n{strategy}\n\nGame history so far:\n{history}\n\nCurrent opponent: Agent {anonymous_id}\n\nDecision (COOPERATE/DEFECT):"
-        }
-    ],
-    "temperature": 0.3,
-    "max_tokens": 50
-}
-```
-
-#### Response Handling
-```python
-async def make_api_call(self, request_data: dict, agent_id: int = None) -> dict:
-    """Make API call with retry logic - fails fast on errors"""
-    for attempt in range(3):
-        try:
-            async with self.session.post(
-                f"{self.BASE_URL}/chat/completions",
-                headers=self.headers,
-                json=request_data
-            ) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return {
-                        "content": data["choices"][0]["message"]["content"],
-                        "usage": data["usage"],
-                        "model": data["model"]
-                    }
-                elif response.status == 429:  # Rate limit
-                    await asyncio.sleep(2 ** attempt)
-                else:
-                    self._handle_critical_error(
-                        f"API returned {response.status}",
-                        agent_id,
-                        request_data
-                    )
-        except Exception as e:
-            if attempt == 2:
-                self._handle_critical_error(str(e), agent_id, request_data)
-            await asyncio.sleep(1)
-
-def _handle_critical_error(self, error: str, agent_id: int, request: dict):
-    """Stop experiment immediately on any API failure"""
-    print(f"\n🛑 CRITICAL ERROR - EXPERIMENT HALTED")
-    print(f"Agent ID: {agent_id if agent_id else 'N/A'}")
-    print(f"Model: {request.get('model')}")
-    print(f"Error: {error}")
-    print(f"Request: {json.dumps(request, indent=2)}")
-    print(f"Timestamp: {datetime.now().isoformat()}")
-
-    # Save partial results before exit
-    self._save_emergency_dump()
-    sys.exit(1)
-```
-
-#### Error Responses
-```python
-# Critical errors that halt experiment immediately
-CRITICAL_ERRORS = {
-    429: "Rate limit exceeded - check OpenRouter limits",
-    401: "Invalid API key - verify OPENROUTER_API_KEY",
-    400: "Invalid request - check model names",
-    500: "OpenRouter server error",
-    "timeout": "API request timeout",
-    "parse_error": "Failed to parse API response"
-}
-
-## Components
+### Core Components
 
 ### ExperimentFlow
 
-**Responsibility:** Top-level orchestrator that manages the entire 10-round experiment lifecycle, tracks global state, and produces final analysis
+**Responsibility:** Top-level orchestration of the complete experiment
 
 **Key Interfaces:**
 - `async def run() -> ExperimentResult` - Main entry point
 - `def save_results(filename: str)` - Persist experiment data
 - `def get_cost_estimate() -> float` - Track API costs
 
-**Dependencies:** RoundFlow, AnalysisNode, OpenRouterClient
+**Dependencies:** RoundFlow, SimpleAnalysisNode, OpenRouterClient
 
 **Technology Stack:** Python asyncio, custom AsyncFlow base class
 
 ### RoundFlow
 
-**Responsibility:** Manages single round execution including strategy collection, game execution, and result anonymization
+**Responsibility:** Orchestrates a single round of the tournament
 
 **Key Interfaces:**
-- `async def execute_round(round_num: int, agents: List[Agent]) -> RoundSummary`
-- `def anonymize_results(games: List[GameResult]) -> List[AnonymizedGame]`
-- `def calculate_round_stats(games: List[GameResult]) -> dict`
+- `async def run(context: dict) -> dict` - Execute round
+- `def get_round_summary() -> RoundSummary` - Generate summary
 
-**Dependencies:** StrategyCollectionNode, GameExecutionFlow, Agent state management
+**Dependencies:** StrategyCollectionNode, GameExecutionFlow, RoundSummaryNode
 
-**Technology Stack:** Python asyncio, numpy for statistics
+**Technology Stack:** AsyncFlow pattern, context passing
 
 ### StrategyCollectionNode
 
-**Responsibility:** Collects strategies from all 10 main agents in parallel using Gemini 2.5 Flash
+**Responsibility:** Collect strategies from all agents in parallel
 
 **Key Interfaces:**
-- `async def collect_strategies(agents: List[Agent], context: dict) -> List[StrategyRecord]`
-- `def build_strategy_prompt(agent: Agent, history: dict) -> str`
-- `def extract_strategy(response: str) -> str`
+- `async def execute(context: dict) -> dict` - Collect all strategies
+- `async def process_item(agent: Agent) -> StrategyRecord` - Process single agent
 
 **Dependencies:** OpenRouterClient, prompt templates
 
-**Technology Stack:** AsyncParallelBatchNode base class, aiohttp for concurrent API calls
+**Technology Stack:** AsyncParallelBatchNode, concurrent execution
 
 ### GameExecutionFlow
 
-**Responsibility:** Executes 45 sequential games (round-robin tournament) and tracks power evolution
+**Responsibility:** Execute all games in a round (round-robin tournament)
 
 **Key Interfaces:**
-- `def execute_games(agents: List[Agent], strategies: dict) -> List[GameResult]`
-- `def update_power(agent: Agent, won: bool) -> float`
-- `def calculate_payoff(action1: str, action2: str, power1: float, power2: float) -> tuple`
+- `async def run(context: dict) -> dict` - Execute all games
+- `def create_pairings(agents: List[Agent]) -> List[tuple]` - Generate matchups
 
-**Dependencies:** SubagentDecisionNode, game theory logic
+**Dependencies:** SubagentDecisionNode, game logic
 
-**Technology Stack:** Sequential Flow pattern, numpy for payoff calculations
+**Technology Stack:** Async game orchestration, payoff calculations
 
 ### SubagentDecisionNode
 
-**Responsibility:** Makes COOPERATE/DEFECT decisions based on delegated strategies using GPT-4.1 Nano
+**Responsibility:** Make COOPERATE/DEFECT decisions based on strategies
 
 **Key Interfaces:**
-- `async def make_decision(strategy: str, game_history: List[dict], opponent_id: str) -> str`
-- `def validate_response(response: str) -> str`
+- `async def make_decision(agent: Agent, opponent: Agent, strategy: str) -> str`
+- `def parse_decision(response: str) -> str` - Extract decision from LLM
 
 **Dependencies:** OpenRouterClient, response parser
 
 **Technology Stack:** AsyncNode base class, lightweight prompting
 
-### AnalysisNode
+### SimpleAnalysisNode
 
-**Responsibility:** Processes experiment transcripts to identify acausal cooperation patterns and generate reports
+**Responsibility:** Performs basic analysis as specified in PRD: cooperation rates, acausal markers, and convergence
 
 **Key Interfaces:**
-- `async def analyze_experiment(results: ExperimentResult) -> dict`
-- `def detect_identity_reasoning(transcripts: List[str]) -> float`
-- `def calculate_strategy_similarity(strategies: List[str]) -> float`
-- `def identify_cooperation_patterns(games: List[GameResult]) -> dict`
+- `async def _execute_impl(context: Dict[str, Any]) -> Dict[str, Any]` - Main analysis execution
+- `def _analyze_cooperation(round_summaries: List[RoundSummary]) -> Dict` - Calculate cooperation statistics
+- `def _check_acausal_markers(strategies: List[StrategyRecord]) -> Dict` - Search for identity reasoning keywords
+- `def _analyze_strategy_convergence(strategies: List[StrategyRecord], round_summaries: List[RoundSummary]) -> Dict` - Check convergence
 
-**Dependencies:** scikit-learn for cosine similarity, pattern matching
+**Dependencies:** numpy for basic statistics
 
-**Technology Stack:** Python NLP libraries, statistical analysis
+**Technology Stack:** Python, basic statistical analysis
 
 ### Simple Analysis Pipeline
 
 The analysis focuses on detecting acausal cooperation patterns for the paper:
 
-#### Pattern Detection
+1. **Identity Reasoning Detection**
+   - Search for keywords: "identical", "same agent", "copy", "acausal", "superrational"
+   - Count frequency across all strategies
+   - Generate acausal_score metric
+
+2. **Cooperation Analysis**
+   - Calculate average cooperation rate
+   - Track cooperation trend (increasing/decreasing)
+   - Identify peak and lowest cooperation rounds
+
+3. **Strategy Convergence**
+   - Compare variance in first vs second half of rounds
+   - Detect if strategies are converging to similar patterns
+   - Calculate convergence strength metric
 
 ```python
-class SimpleAnalyzer:
-    def __init__(self):
-        self.identity_keywords = [
-            "identical", "same agent", "same model",
-            "logical correlation", "acausal", "superrational"
-        ]
-
-    def analyze_strategies(self, strategy_records: List[dict]) -> dict:
-        """Analyze strategies for acausal reasoning"""
-        identity_count = 0
-        total_strategies = len(strategy_records)
-
-        for record in strategy_records:
-            text = record["full_reasoning"].lower()
-            if any(keyword in text for keyword in self.identity_keywords):
-                identity_count += 1
-
-        return {
-            "identity_reasoning_frequency": identity_count / total_strategies,
-            "total_strategies_analyzed": total_strategies
-        }
-
+class SimpleAnalysisNode:
     def analyze_cooperation_patterns(self, all_games: List[dict]) -> dict:
         """Calculate cooperation statistics"""
         cooperation_by_round = defaultdict(list)
-
         for game in all_games:
-            both_cooperated = (
-                game["player1_action"] == "COOPERATE" and
-                game["player2_action"] == "COOPERATE"
+            round_num = game['round']
+            cooperation_by_round[round_num].append(
+                1 if game['player1_action'] == 'COOPERATE' else 0
             )
-            cooperation_by_round[game["round"]].append(both_cooperated)
-
-        # Calculate trends
-        round_rates = []
-        for round_num in sorted(cooperation_by_round.keys()):
-            rate = sum(cooperation_by_round[round_num]) / len(cooperation_by_round[round_num])
-            round_rates.append(rate)
-
-        # Simple convergence check
-        converged = False
-        convergence_round = 10
-        if len(round_rates) > 3:
-            # Check if last 3 rounds are stable (variance < 0.1)
-            last_three = round_rates[-3:]
-            if max(last_three) - min(last_three) < 0.1:
-                converged = True
-                convergence_round = len(round_rates) - 2
-
+            cooperation_by_round[round_num].append(
+                1 if game['player2_action'] == 'COOPERATE' else 0
+            )
+        
         return {
-            "final_cooperation_rate": round_rates[-1] if round_rates else 0,
-            "cooperation_trend": round_rates,
-            "converged": converged,
-            "convergence_round": convergence_round
+            'average_cooperation': np.mean([np.mean(v) for v in cooperation_by_round.values()]),
+            'cooperation_trend': 'increasing' if rates[-1] > rates[0] else 'decreasing'
         }
-
-    def calculate_superrationality_score(self, analysis_results: dict) -> float:
-        """Simple scoring for paper"""
-        score = 0.0
-
-        # Identity reasoning (40% weight)
-        score += 0.4 * analysis_results["identity_reasoning_frequency"]
-
-        # High cooperation (40% weight)
-        final_coop = analysis_results["final_cooperation_rate"]
-        score += 0.4 * final_coop
-
-        # Fast convergence (20% weight)
-        if analysis_results["converged"]:
-            # Earlier convergence = higher score
-            convergence_score = (10 - analysis_results["convergence_round"]) / 10
-            score += 0.2 * convergence_score
-
-        return min(score, 1.0)  # Cap at 1.0
 ```
 
-#### Report Generation for Paper
+### DataManager
 
-```python
-def generate_analysis_report(experiment_results: dict, output_path: str):
-    """Generate analysis report for paper"""
-    analyzer = SimpleAnalyzer()
+**Responsibility:** Handle all file I/O operations for experiment data
 
-    # Load data
-    strategies = []
-    games = []
+**Key Interfaces:**
+- `def save_strategies(round_num: int, strategies: List[StrategyRecord])`
+- `def save_games(round_num: int, games: List[GameResult])`
+- `def save_experiment_result(result: ExperimentResult)`
+- `def get_experiment_path() -> Path` - Get experiment directory
 
-    for round_num in range(1, 11):
-        # Load strategies
-        with open(f"{output_path}/strategies_r{round_num}.json") as f:
-            round_strategies = json.load(f)
-            strategies.extend(round_strategies["strategies"])
+**Dependencies:** pathlib, json
 
-        # Load games
-        with open(f"{output_path}/games_r{round_num}.json") as f:
-            round_games = json.load(f)
-            games.extend(round_games["games"])
+**Technology Stack:** JSON serialization, file system operations
 
-    # Run analysis
-    strategy_analysis = analyzer.analyze_strategies(strategies)
-    cooperation_analysis = analyzer.analyze_cooperation_patterns(games)
+### OpenRouterClient
 
-    # Calculate indicators
-    acausal_indicators = {
-        "identity_reasoning_frequency": strategy_analysis["identity_reasoning_frequency"],
-        "final_cooperation_rate": cooperation_analysis["final_cooperation_rate"],
-        "convergence_round": cooperation_analysis["convergence_round"],
-        "overall_score": analyzer.calculate_superrationality_score({
-            **strategy_analysis,
-            **cooperation_analysis
-        })
-    }
+**Responsibility:** Manage all API interactions with OpenRouter
 
-    # Save results
-    analysis_results = {
-        "experiment_id": experiment_results["experiment_id"],
-        "strategy_analysis": strategy_analysis,
-        "cooperation_dynamics": cooperation_analysis,
-        "acausal_indicators": acausal_indicators,
-        "round_summaries": [
-            {
-                "round": i + 1,
-                "cooperation_rate": cooperation_analysis["cooperation_trend"][i]
-            }
-            for i in range(len(cooperation_analysis["cooperation_trend"]))
-        ]
-    }
+**Key Interfaces:**
+- `async def complete(messages: list, model: str, **kwargs) -> dict`
+- `async def get_completion_text(messages: list, model: str, **kwargs) -> str`
+- `async def get_completion_with_usage(messages: list, model: str, **kwargs) -> tuple`
 
-    with open(f"{output_path}/acausal_analysis.json", "w") as f:
-        json.dump(analysis_results, f, indent=2)
+**Dependencies:** aiohttp
 
-    # Generate readable report
-    report = f"""
-# Acausal Cooperation Analysis
+**Technology Stack:** Async HTTP client, rate limiting
 
-## Summary
-- **Identity Reasoning:** {acausal_indicators['identity_reasoning_frequency']:.1%} of agents
-- **Final Cooperation Rate:** {acausal_indicators['final_cooperation_rate']:.1%}
-- **Convergence:** Round {acausal_indicators['convergence_round']}
-- **Superrationality Score:** {acausal_indicators['overall_score']:.2f}/1.0
+## Technical Architecture
 
-## Cooperation Over Time
-{chr(10).join(f"Round {i+1}: {rate:.1%}" for i, rate in enumerate(cooperation_analysis['cooperation_trend']))}
+### Sequence Diagrams
 
-## Interpretation
-{"Strong evidence" if acausal_indicators['overall_score'] > 0.7 else "Moderate evidence" if acausal_indicators['overall_score'] > 0.4 else "Weak evidence"} of acausal cooperation.
-"""
-
-    with open(f"{output_path}/analysis_report.txt", "w") as f:
-        f.write(report)
-
-    return analysis_results
-```
-
-### Component Interaction Diagram
+#### Strategy Collection Sequence
 
 ```mermaid
-graph LR
-    subgraph "Experiment Control"
+sequenceDiagram
+    participant RF as RoundFlow
+    participant SC as StrategyCollectionNode
+    participant API as OpenRouterClient
+    participant LLM as LLM Model
+    
+    RF->>SC: execute(context)
+    SC->>SC: Create 10 parallel tasks
+    par For each agent
+        SC->>API: get_completion_with_usage()
+        API->>LLM: POST /chat/completions
+        LLM-->>API: Strategy response
+        API-->>SC: (text, tokens)
+        SC->>SC: Parse strategy
+    end
+    SC->>SC: Aggregate results
+    SC-->>RF: Updated context
+```
+
+#### Game Execution Sequence
+
+```mermaid
+sequenceDiagram
+    participant GE as GameExecutionFlow
+    participant SD as SubagentDecisionNode
+    participant API as OpenRouterClient
+    participant LLM as GPT-4-mini
+    
+    GE->>GE: Create 45 game pairings
+    loop For each game
+        GE->>SD: make_decision(agent1, agent2, strategy1)
+        SD->>API: get_completion_text()
+        API->>LLM: Decision request
+        LLM-->>API: COOPERATE/DEFECT
+        API-->>SD: Decision text
+        SD->>SD: Parse decision
+        SD-->>GE: Action1
+        
+        GE->>SD: make_decision(agent2, agent1, strategy2)
+        SD-->>GE: Action2
+        
+        GE->>GE: Calculate payoffs
+        GE->>GE: Update powers
+    end
+    GE-->>RF: Games list
+```
+
+### Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph "Local Environment"
+        A[Python 3.8+ Runtime]
+        B[Virtual Environment]
+        C[Experiment Code]
+        D[JSON Storage]
+    end
+    
+    subgraph "Cloud Services"
+        E[OpenRouter API]
+        F[Gemini 2.5 Flash]
+        G[GPT-4-mini]
+    end
+    
+    C --> E
+    E --> F
+    E --> G
+    C --> D
+```
+
+### State Flow
+
+```mermaid
+stateDiagram-v2
+    [*] --> Initialize
+    Initialize --> CollectStrategies
+    CollectStrategies --> ExecuteGames
+    ExecuteGames --> UpdatePowers
+    UpdatePowers --> SaveRound
+    SaveRound --> CheckComplete
+    CheckComplete --> CollectStrategies: More rounds
+    CheckComplete --> RunAnalysis: All rounds done
+    RunAnalysis --> SaveResults
+    SaveResults --> [*]
+```
+
+## Component Interactions
+
+### Flow Hierarchy
+
+```mermaid
+graph TB
+    subgraph "Main"
         EF[ExperimentFlow]
+    end
+    
+    subgraph "Round Management"
         RF[RoundFlow]
-    end
-
-    subgraph "Strategy Phase"
         SC[StrategyCollectionNode]
-        PM[PromptManager]
-    end
-
-    subgraph "Game Phase"
         GE[GameExecutionFlow]
+        RS[RoundSummaryNode]
+    end
+    
+    subgraph "Game Execution"
         SD[SubagentDecisionNode]
-        GL[GameLogic]
     end
-
-    subgraph "Data Layer"
-        DM[DataManager]
-        JP[JSONPersistence]
-    end
-
+    
     subgraph "Analysis"
-        AN[AnalysisNode]
-        RP[ReportGenerator]
+        AN[SimpleAnalysisNode]
     end
-
+    
     EF --> RF
     RF --> SC
     RF --> GE
-    SC --> PM
+    RF --> RS
     GE --> SD
-    GE --> GL
-    SD --> GL
-    RF --> DM
-    DM --> JP
     EF --> AN
-    AN --> RP
-
-    SC -.-> API[OpenRouter API]
-    SD -.-> API
 ```
 
-## External APIs
+### Context Flow
 
-### OpenRouter API
+The system uses a shared context dictionary that flows through all components:
 
-- **Purpose:** Provides unified access to multiple LLM models (Gemini 2.5 Flash and GPT-4.1 Nano)
-- **Documentation:** https://openrouter.ai/docs
-- **Base URL(s):** https://openrouter.ai/api/v1
-- **Authentication:** Bearer token (API key in Authorization header)
-- **Rate Limits:** Varies by model - typically 60 requests/minute for free tier
+```python
+context = {
+    'experiment_id': str,
+    'round': int,
+    'agents': List[Agent],
+    'strategies': List[StrategyRecord],
+    'games': List[GameResult],
+    'round_summaries': List[RoundSummary],
+    'config': Config
+}
+```
 
-**Key Endpoints Used:**
-- `POST /chat/completions` - Generate LLM completions for strategies and decisions
-
-**Integration Notes:**
-- All API calls go through centralized OpenRouterClient to handle authentication and retries
-- Experiment halts immediately on API failures to maintain data integrity
-- Cost tracking implemented to monitor API usage (~$5 per complete experiment)
-
-No other external APIs are required for this experiment.
-
-## Core Workflows
+## Detailed Sequence Flows
 
 ### Complete Experiment Flow
 
@@ -721,371 +584,162 @@ sequenceDiagram
     participant RF as RoundFlow
     participant SC as StrategyCollection
     participant GE as GameExecution
-    participant AN as AnalysisNode
+    participant AN as SimpleAnalysisNode
     participant API as OpenRouter API
     participant FS as File System
-
+    
     User->>EF: python run_experiment.py
     EF->>EF: Initialize 10 agents with IDs 0-9
-
-    loop For each round (1-10)
-        EF->>RF: execute_round(round_num, agents)
-
-        Note over RF: Phase 1: Strategy Collection
-        RF->>RF: Assign random power levels (50-150)
-        RF->>SC: collect_strategies(agents, previous_rounds)
-
-        par Parallel API calls for 10 agents
-            SC->>API: POST /chat/completions (Gemini 2.5 Flash)
-            API-->>SC: Strategy + reasoning
+    
+    loop For 10 rounds
+        EF->>RF: Run round N
+        RF->>SC: Collect strategies from 10 agents
+        SC->>API: 10 parallel API calls to Gemini
+        API-->>SC: Strategy responses
+        SC->>FS: Save strategies_rN.json
+        
+        RF->>GE: Execute 45 games
+        loop For each game
+            GE->>API: 2 decisions (GPT-4-mini)
+            API-->>GE: COOPERATE/DEFECT
         end
-
-        SC->>FS: Save strategies_r{N}.json
-        SC-->>RF: Strategy records
-
-        Note over RF: Phase 2: Game Execution
-        RF->>GE: execute_games(agents, strategies)
-
-        loop For each game pair (45 games)
-            GE->>GE: Select agent pair (i,j)
-
-            par Subagent decisions
-                GE->>API: POST /chat/completions (GPT-4.1 Nano) for Agent i
-                GE->>API: POST /chat/completions (GPT-4.1 Nano) for Agent j
-                API-->>GE: COOPERATE/DEFECT decisions
-            end
-
-            GE->>GE: Calculate payoffs with power scaling
-            GE->>GE: Update agent powers (+/-1%)
-            GE->>GE: Record game result
-        end
-
-        GE->>FS: Save games_r{N}.json
-        GE-->>RF: Game results
-
-        Note over RF: Phase 3: Anonymization
+        GE->>FS: Save games_rN.json
+        
+        RF->>RF: Update agent powers
         RF->>RF: Anonymize agent IDs
         RF->>RF: Calculate round statistics
-        RF->>FS: Save round_summary_r{N}.json
-        RF-->>EF: Round summary
+        RF->>FS: Save round_summary_rN.json
     end
-
-    Note over EF: Final Analysis
-    EF->>AN: analyze_experiment(all_results)
-    AN->>AN: Detect identity reasoning
-    AN->>AN: Calculate strategy similarity
-    AN->>AN: Identify cooperation patterns
-    AN->>FS: Save acausal_analysis.json
-    AN-->>EF: Analysis results
-
-    EF->>FS: Save experiment_summary.json
-    EF-->>User: Experiment complete!
+    
+    EF->>AN: Run analysis
+    AN->>AN: Check for acausal markers
+    AN->>AN: Calculate cooperation rates
+    AN->>AN: Analyze convergence
+    AN->>FS: Save analysis.json
+    
+    EF->>FS: Save experiment_result.json
+    EF-->>User: Experiment complete
 ```
 
-### Strategy Collection Workflow
+## API Integration
 
-```mermaid
-sequenceDiagram
-    participant SC as StrategyCollectionNode
-    participant PM as PromptManager
-    participant API as OpenRouter API
-    participant Agent
+### OpenRouter Integration
 
-    SC->>SC: Prepare batch of 10 agents
-
-    loop For each agent (parallel)
-        SC->>PM: build_strategy_prompt(agent, context)
-        PM->>PM: Include experiment rules
-        PM->>PM: Add previous round summaries
-        PM->>PM: Emphasize identical agent insight
-        PM-->>SC: Formatted prompt
-
-        SC->>API: POST /chat/completions
-        Note over API: Model: google/gemini-2.5-flash<br/>Temp: 0.7<br/>Max tokens: 500
-
-        alt Success
-            API-->>SC: Strategy response
-            SC->>SC: Extract concise strategy
-            SC->>SC: Store full reasoning
-        else API Error
-            API-->>SC: Error response
-            SC->>SC: Log error details
-            SC->>SC: halt_experiment()
-            SC-->>Agent: CRITICAL ERROR
-        end
-    end
-
-    SC->>SC: Verify all strategies collected
-    SC-->>Agent: Strategy records
+```python
+class OpenRouterClient:
+    BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
+    
+    async def complete(self, messages: list, model: str, **kwargs):
+        """Make completion request to OpenRouter"""
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": kwargs.get("temperature", 0.7),
+            "max_tokens": kwargs.get("max_tokens", 1000)
+        }
+        
+        async with self.session.post(
+            self.BASE_URL,
+            headers=self.headers,
+            json=payload
+        ) as response:
+            return await response.json()
 ```
 
-### Game Execution Workflow
+### Rate Limiting Strategy
 
-```mermaid
-sequenceDiagram
-    participant GE as GameExecutionFlow
-    participant SD as SubagentDecision
-    participant GL as GameLogic
-    participant API as OpenRouter API
+- Simple token bucket algorithm
+- 60 requests per minute limit
+- Exponential backoff on 429 errors
+- Parallel requests for strategy collection
+- Sequential requests for game decisions
 
-    Note over GE: Round-robin tournament
+## Data Persistence
 
-    loop For i in range(10)
-        loop For j in range(i+1, 10)
-            GE->>GE: Get strategies for agents i,j
-            GE->>GE: Get current game history
+### File Structure
 
-            par Parallel decisions
-                GE->>SD: decide(strategy_i, history, "Agent X")
-                SD->>API: POST /chat/completions (GPT-4.1 Nano)
-                API-->>SD: "COOPERATE" or "DEFECT"
-                SD-->>GE: action_i
-
-                GE->>SD: decide(strategy_j, history, "Agent Y")
-                SD->>API: POST /chat/completions (GPT-4.1 Nano)
-                API-->>SD: "COOPERATE" or "DEFECT"
-                SD-->>GE: action_j
-            end
-
-            GE->>GL: calculate_payoff(action_i, action_j, power_i, power_j)
-            GL->>GL: Base payoff from matrix
-            GL->>GL: Scale by log(power/100)
-            GL-->>GE: (payoff_i, payoff_j)
-
-            GE->>GL: update_powers(agent_i, agent_j, winner)
-            GL->>GL: Winner: power * 1.01 (max 150)
-            GL->>GL: Loser: power * 0.99 (min 50)
-            GL-->>GE: Updated powers
-
-            GE->>GE: Record game result
-            GE->>GE: Update total scores
-        end
-    end
-
-    GE-->>Agent: All game results
+```
+results/
+└── exp_20250714_120000_abc123/
+    ├── strategies/
+    │   ├── strategies_r1.json
+    │   ├── strategies_r2.json
+    │   └── ...
+    ├── games/
+    │   ├── games_r1.json
+    │   ├── games_r2.json
+    │   └── ...
+    ├── summaries/
+    │   ├── round_summary_r1.json
+    │   ├── round_summary_r2.json
+    │   └── ...
+    ├── experiment_result.json
+    └── analysis.json
 ```
 
-### Error Handling Workflow
+### JSON Schema Examples
 
-```mermaid
-sequenceDiagram
-    participant Component
-    participant API as OpenRouter API
-    participant EH as ErrorHandler
-    participant FS as FileSystem
-    participant OS as System
-
-    Component->>API: API Request
-
-    alt Success (200)
-        API-->>Component: Valid response
-        Component->>Component: Continue execution
-    else Rate Limit (429)
-        API-->>Component: Rate limit error
-        loop Retry up to 3 times
-            Component->>Component: Wait (exponential backoff)
-            Component->>API: Retry request
-            alt Success
-                API-->>Component: Valid response
-                Component->>Component: Continue
-            else Still rate limited
-                API-->>Component: Rate limit error
-            end
-        end
-        Component->>EH: handle_critical_error()
-    else Any other error
-        API-->>Component: Error response
-        Component->>EH: handle_critical_error()
-    end
-
-    Note over EH: Critical Error Handling
-    EH->>EH: Log error details
-    EH->>EH: Log agent ID
-    EH->>EH: Log request details
-    EH->>FS: save_emergency_dump()
-    FS->>FS: Write partial_results.json
-    FS->>FS: Write error_log.json
-    EH->>OS: sys.exit(1)
-    OS-->>Component: HALT EXPERIMENT
-```
-
-## Database Schema
-
-Since this experiment uses JSON files rather than a traditional database, this section defines the structure of the JSON data files:
-
-### strategies_r{N}.json
+#### Strategy Record
 ```json
 {
+  "strategy_id": "strat_0_r1_abc123",
+  "agent_id": 0,
   "round": 1,
-  "timestamp": "2024-01-15T10:30:00Z",
-  "strategies": [
-    {
-      "strategy_id": "r1_a0_1234567890",
-      "agent_id": 0,
-      "round": 1,
-      "strategy_text": "Always cooperate if opponent cooperated last time",
-      "full_reasoning": "Given that we are all identical agents...",
-      "prompt_tokens": 245,
-      "completion_tokens": 487,
-      "model": "google/gemini-2.5-flash",
-      "timestamp": "2024-01-15T10:30:15Z"
-    }
-    // ... 9 more agents
-  ]
+  "strategy_text": "Always cooperate in round 1",
+  "full_reasoning": "Since we are all identical agents...",
+  "prompt_tokens": 150,
+  "completion_tokens": 75,
+  "model": "google/gemini-2.5-flash",
+  "timestamp": "2025-07-14T12:00:00Z"
 }
 ```
 
-### games_r{N}.json
+#### Game Result
 ```json
 {
+  "game_id": "game_r1_0v1_abc123",
   "round": 1,
-  "timestamp": "2024-01-15T10:35:00Z",
-  "games": [
-    {
-      "game_id": "r1_g1",
-      "round": 1,
-      "game_number": 1,
-      "player1_id": 0,
-      "player2_id": 1,
-      "player1_action": "COOPERATE",
-      "player2_action": "COOPERATE",
-      "player1_payoff": 3.0,
-      "player2_payoff": 3.0,
-      "player1_power_before": 95.5,
-      "player2_power_before": 102.3,
-      "player1_power_after": 96.45,
-      "player2_power_after": 103.32,
-      "timestamp": "2024-01-15T10:35:05Z"
-    }
-    // ... 44 more games
-  ],
-  "power_evolution": {
-    "initial": {"0": 95.5, "1": 102.3, "2": 88.7, /* ... */},
-    "final": {"0": 98.2, "1": 99.1, "2": 91.3, /* ... */}
-  }
+  "player1_id": 0,
+  "player2_id": 1,
+  "player1_action": "COOPERATE",
+  "player2_action": "COOPERATE",
+  "player1_payoff": 3.0,
+  "player2_payoff": 3.0,
+  "player1_power_before": 100.0,
+  "player2_power_before": 100.0,
+  "timestamp": "2025-07-14T12:01:00Z"
 }
 ```
 
-### round_summary_r{N}.json
+#### Round Summary
 ```json
 {
   "round": 1,
-  "cooperation_rate": 0.67,
-  "average_score": 3.2,
-  "score_variance": 0.45,
+  "cooperation_rate": 0.8,
+  "average_score": 2.7,
+  "score_variance": 0.5,
   "power_distribution": {
-    "mean": 100.1,
-    "std": 15.3,
-    "min": 72.4,
-    "max": 128.9
+    "mean": 100.5,
+    "std": 2.3,
+    "min": 95.2,
+    "max": 105.8
   },
   "anonymized_games": [
     {
-      "round": 1,
-      "player1_anonymous": "X",
-      "player2_anonymous": "Y",
+      "anonymous_id1": "Agent_123",
+      "anonymous_id2": "Agent_456",
       "action1": "COOPERATE",
-      "action2": "COOPERATE",
-      "payoff1": 3.0,
-      "payoff2": 3.0
+      "action2": "DEFECT",
+      "power_ratio": 1.05
     }
-    // ... all 45 games with randomized anonymous IDs
-  ],
-  "strategy_similarity": 0.78
-}
-```
-
-### experiment_summary.json
-```json
-{
-  "experiment_id": "exp_20240115_103000",
-  "start_time": "2024-01-15T10:30:00Z",
-  "end_time": "2024-01-15T11:45:00Z",
-  "duration_minutes": 75,
-  "total_rounds": 10,
-  "total_games": 450,
-  "total_api_calls": 460,
-  "total_cost": 4.85,
-  "model_usage": {
-    "google/gemini-2.5-flash": {
-      "calls": 100,
-      "prompt_tokens": 24500,
-      "completion_tokens": 48700
-    },
-    "gpt-4.1-nano": {
-      "calls": 900,
-      "prompt_tokens": 45000,
-      "completion_tokens": 9000
-    }
-  },
-  "round_summaries": [/* Array of round summaries */],
-  "final_agent_scores": {
-    "0": 145.2,
-    "1": 142.8,
-    // ... all 10 agents
-  }
-}
-```
-
-### acausal_analysis.json
-```json
-{
-  "experiment_id": "exp_20240115_103000",
-  "analysis_timestamp": "2024-01-15T11:45:30Z",
-  "acausal_indicators": {
-    "identity_reasoning_frequency": 0.73,
-    "cooperation_despite_asymmetry": 0.45,
-    "surprise_at_defection": 0.28,
-    "strategy_convergence": 0.81
-  },
-  "pattern_analysis": {
-    "rounds_to_convergence": 4,
-    "dominant_strategy": "Conditional cooperation with identity recognition",
-    "defection_triggers": ["Power asymmetry > 30%", "Previous defection"],
-    "cooperation_clusters": [[0,2,5,7], [1,3,4,8,9]]
-  },
-  "transcript_insights": [
-    {
-      "agent_id": 3,
-      "round": 2,
-      "insight_type": "identity_recognition",
-      "quote": "Since we are all identical copies, the rational choice..."
-    }
-    // ... more insights
   ]
 }
 ```
 
-### File Organization Structure
-```
-results/
-├── experiment_20240115_103000/
-│   ├── rounds/
-│   │   ├── strategies_r1.json
-│   │   ├── games_r1.json
-│   │   ├── round_summary_r1.json
-│   │   ├── strategies_r2.json
-│   │   ├── games_r2.json
-│   │   ├── round_summary_r2.json
-│   │   └── ... (up to r10)
-│   ├── experiment_summary.json
-│   ├── acausal_analysis.json
-│   └── experiment.log
-└── experiment_20240115_120000/
-    └── ... (next experiment)
-```
+## Implementation
 
-## Frontend Architecture
+### Directory Structure
 
-This experiment has no frontend interface - it is a command-line research tool that outputs JSON files for analysis.
-
-## Backend Architecture
-
-### Service Architecture
-
-Since this is a focused research experiment, we use a modular Python architecture rather than a traditional server:
-
-#### Function Organization
 ```
 acausal/
 ├── nodes/
@@ -1093,7 +747,7 @@ acausal/
 │   ├── base.py                    # AsyncNode, AsyncFlow base classes
 │   ├── strategy_collection.py     # StrategyCollectionNode
 │   ├── subagent_decision.py      # SubagentDecisionNode
-│   └── analysis.py               # AnalysisNode
+│   └── simple_analysis.py        # SimpleAnalysisNode
 ├── flows/
 │   ├── __init__.py
 │   ├── experiment.py             # ExperimentFlow
@@ -1101,652 +755,136 @@ acausal/
 │   └── game_execution.py         # GameExecutionFlow
 ├── core/
 │   ├── __init__.py
-│   ├── models.py                 # Agent, GameResult dataclasses
-│   ├── game_logic.py             # Payoff calculations, power updates
-│   ├── prompts.py                # Prompt templates
+│   ├── models.py                 # Data models (Agent, GameResult, etc.)
+│   ├── config.py                 # Configuration
 │   └── api_client.py             # OpenRouterClient
 ├── utils/
 │   ├── __init__.py
 │   ├── data_manager.py           # JSON file I/O
-│   ├── anonymizer.py             # Round result anonymization
-│   └── statistics.py             # Statistical calculations
+│   └── anonymizer.py             # Round result anonymization
 └── run_experiment.py             # Main entry point
 ```
 
 #### Node Base Classes
+
 ```python
-class AsyncNode:
-    """Base class for async operations"""
+class AsyncNode(ABC):
+    """Base class for async operations with retry logic"""
+    
+    @abstractmethod
+    async def _execute_impl(self, context: dict) -> dict:
+        """Implementation to be provided by subclasses"""
+        pass
+    
     async def execute(self, context: dict) -> dict:
-        raise NotImplementedError
+        """Execute with retry logic"""
+        for attempt in range(self.max_retries):
+            try:
+                return await self._execute_impl(context)
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay * (2 ** attempt))
+                else:
+                    raise
 
 class AsyncFlow:
     """Base class for orchestrating multiple nodes"""
-    def __init__(self):
-        self.nodes = []
-
+    
+    def add_node(self, node: AsyncNode) -> 'AsyncFlow':
+        """Add node to flow"""
+        self.nodes.append(node)
+        return self
+    
     async def run(self, context: dict) -> dict:
+        """Run all nodes in sequence"""
         for node in self.nodes:
             context = await node.execute(context)
         return context
-
-class AsyncParallelBatchNode(AsyncNode):
-    """Execute multiple async operations in parallel"""
-    async def execute_batch(self, items: list) -> list:
-        tasks = [self.process_item(item) for item in items]
-        return await asyncio.gather(*tasks, return_exceptions=False)
 ```
 
-### Database Architecture
-
-#### Data Access Layer
-```python
-class DataManager:
-    """Handles all file I/O operations"""
-    def __init__(self, base_path: str):
-        self.base_path = Path(base_path)
-        self.experiment_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        self.experiment_path = self.base_path / self.experiment_id
-
-    def save_strategies(self, round_num: int, strategies: List[StrategyRecord]):
-        path = self.experiment_path / "rounds" / f"strategies_r{round_num}.json"
-        data = {
-            "round": round_num,
-            "timestamp": datetime.now().isoformat(),
-            "strategies": [asdict(s) for s in strategies]
-        }
-        self._write_json(path, data)
-
-    def save_games(self, round_num: int, games: List[GameResult]):
-        # Similar pattern for games, summaries, etc.
-```
-
-#### Repository Pattern
-```python
-class ExperimentRepository:
-    """Abstracts data storage for experiments"""
-    def __init__(self, data_manager: DataManager):
-        self.dm = data_manager
-
-    async def save_round_results(self, round_data: RoundSummary):
-        """Save complete round results atomically"""
-        # Ensures all round data saved together
-
-    def load_experiment(self, experiment_id: str) -> ExperimentResult:
-        """Reconstruct experiment from saved files"""
-        # Useful for re-analysis or resumption
-```
-
-### Authentication and Authorization
-
-Since this is a local research tool, authentication is limited to API key management:
-
-#### API Key Configuration
-```python
-class Config:
-    """Manages configuration and secrets"""
-    def __init__(self):
-        self.api_key = os.environ.get("OPENROUTER_API_KEY")
-        if not self.api_key:
-            raise ValueError("OPENROUTER_API_KEY environment variable required")
-
-    @property
-    def headers(self) -> dict:
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-```
-
-### Async Architecture Patterns
-
-#### Concurrent Strategy Collection
-```python
-class StrategyCollectionNode(AsyncParallelBatchNode):
-    async def process_item(self, agent: Agent) -> StrategyRecord:
-        """Process single agent - called in parallel"""
-        prompt = self.build_prompt(agent)
-        response = await self.api_client.complete(prompt)
-        return self.parse_strategy(agent, response)
-
-    async def execute(self, context: dict) -> dict:
-        agents = context["agents"]
-        strategies = await self.execute_batch(agents)
-        context["strategies"] = strategies
-        return context
-```
-
-#### Sequential Game Execution
-```python
-class GameExecutionFlow(Flow):
-    """Games must be sequential for deterministic results"""
-    async def run(self, context: dict) -> dict:
-        games = []
-        agents = context["agents"]
-
-        for i in range(len(agents)):
-            for j in range(i + 1, len(agents)):
-                game = await self.play_game(agents[i], agents[j])
-                self.update_powers(agents[i], agents[j], game)
-                games.append(game)
-
-        context["games"] = games
-        return context
-```
-
-## Simple Testing Approach
-
-### Basic Tests
-
-Since this is a research experiment, we focus on essential tests:
-
-```python
-# test_experiment.py
-import pytest
-from unittest.mock import AsyncMock
-
-class TestGameLogic:
-    def test_payoff_calculation(self):
-        """Test basic payoff matrix"""
-        assert calculate_payoff("COOPERATE", "COOPERATE") == (3, 3)
-        assert calculate_payoff("COOPERATE", "DEFECT") == (0, 5)
-        assert calculate_payoff("DEFECT", "COOPERATE") == (5, 0)
-        assert calculate_payoff("DEFECT", "DEFECT") == (1, 1)
-
-    def test_power_evolution(self):
-        """Test power changes after games"""
-        # Winner gains 1%
-        assert update_power(100, won=True) == 101
-        # Loser loses 1%
-        assert update_power(100, won=False) == 99
-        # Bounds checking
-        assert update_power(150, won=True) == 150  # Max
-        assert update_power(50, won=False) == 50   # Min
-
-class TestExperiment:
-    @pytest.mark.asyncio
-    async def test_full_experiment_with_mocks(self):
-        """Test experiment flow with mocked API"""
-        mock_client = AsyncMock()
-        mock_client.make_api_call.return_value = {
-            "choices": [{"message": {"content": "COOPERATE"}}],
-            "usage": {"total_tokens": 100}
-        }
-
-        experiment = ExperimentFlow(
-            api_client=mock_client,
-            num_rounds=2  # Small for testing
-        )
-
-        result = await experiment.run()
-
-        assert result["total_rounds"] == 2
-        assert result["total_games"] == 90  # 45 games * 2 rounds
-        assert "experiment_id" in result
-
-# Run with: pytest test_experiment.py -v
-
-## Project Structure
-
-```plaintext
-acausal/
-├── src/
-│   ├── __init__.py
-│   ├── experiment.py         # Main ExperimentFlow
-│   ├── nodes.py             # StrategyCollection, SubagentDecision
-│   ├── game_logic.py        # Payoff calculations
-│   ├── api_client.py        # OpenRouter integration
-│   └── analysis.py          # Simple analysis
-├── configs/                  # Experiment configurations
-│   ├── baseline.yaml
-│   ├── high_temp.yaml
-│   └── low_temp.yaml
-├── results/                  # Experiment outputs (gitignored)
-│   └── .gitkeep
-├── run_experiment.py         # Single experiment runner
-├── run_all_experiments.py    # Multiple experiment runner
-├── compare_results.py        # Result comparison for paper
-├── test_experiment.py        # Basic tests
-├── requirements.txt          # Dependencies
-├── .env.example             # API key template
-└── README.md                # Documentation
-```
-
-## Quick Start
-
-```bash
-# Clone and setup
-git clone https://github.com/yourusername/acausal.git
-cd acausal
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Configure
-cp .env.example .env
-# Add your OpenRouter API key to .env
-
-# Run single experiment
-python run_experiment.py
-
-# Run multiple experiments
-python run_all_experiments.py
-
-# Compare results
-python compare_results.py
-```
-
-## Error Handling
-
-### Simple Error Strategy
-
-Since this is a research experiment, we keep error handling simple and fail fast to maintain data integrity:
-
-```python
-class OpenRouterClient:
-    async def make_api_call(self, request_data: dict) -> dict:
-        """Make API call with simple retry logic"""
-        for attempt in range(3):
-            try:
-                async with self.session.post(
-                    f"{self.BASE_URL}/chat/completions",
-                    headers=self.headers,
-                    json=request_data
-                ) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    elif response.status == 429:  # Rate limit
-                        await asyncio.sleep(2 ** attempt)
-                    else:
-                        raise Exception(f"API error: {response.status}")
-            except Exception as e:
-                if attempt == 2:
-                    # Save partial results before exiting
-                    self._save_partial_results()
-                    print(f"FATAL ERROR: {e}")
-                    sys.exit(1)
-                await asyncio.sleep(1)
-```
-
-## Running Multiple Experiments
-
-Since we need to run the experiment multiple times with different parameters for the paper, here's a simple approach:
-
-### Configuration Files
-
-Create YAML configuration files for different experiment variants:
-
-```yaml
-# configs/baseline.yaml
-experiment_name: "baseline"
-num_agents: 10
-num_rounds: 10
-strategy_model: "google/gemini-2.5-flash"
-decision_model: "openai/GPT-4.1-nano"
-temperature: 0.7
-
-# configs/high_temp.yaml
-experiment_name: "high_temperature"
-num_agents: 10
-num_rounds: 10
-strategy_model: "google/gemini-2.5-flash"
-decision_model: "openai/GPT-4.1-nano"
-temperature: 1.0
-
-# configs/low_temp.yaml
-experiment_name: "low_temperature"
-num_agents: 10
-num_rounds: 10
-strategy_model: "google/gemini-2.5-flash"
-decision_model: "openai/GPT-4.1-nano"
-temperature: 0.3
-```
-
-### Running Experiments
-
-Simple script to run multiple configurations:
-
-```python
-# run_all_experiments.py
-import asyncio
-import yaml
-from pathlib import Path
-
-async def run_experiment_with_config(config_path: str):
-    """Run single experiment with given config"""
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-
-    experiment = ExperimentFlow(**config)
-    result = await experiment.run()
-
-    print(f"Completed: {config['experiment_name']}")
-    return result
-
-async def main():
-    """Run all experiments sequentially"""
-    configs = Path("configs").glob("*.yaml")
-
-    for config_path in configs:
-        print(f"\nRunning: {config_path.stem}")
-        try:
-            await run_experiment_with_config(config_path)
-        except Exception as e:
-            print(f"Failed: {config_path.stem} - {e}")
-            continue
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Comparing Results
-
-Simple comparison script for the paper:
-
-```python
-# compare_results.py
-import json
-import pandas as pd
-from pathlib import Path
-
-def load_experiment_results(experiment_name: str):
-    """Load results from experiment directory"""
-    base_path = Path(f"results/{experiment_name}")
-
-    with open(base_path / "experiment_summary.json") as f:
-        summary = json.load(f)
-
-    with open(base_path / "acausal_analysis.json") as f:
-        analysis = json.load(f)
-
-    return {
-        "name": experiment_name,
-        "cooperation_rate": analysis["final_cooperation_rate"],
-        "superrationality_score": analysis["acausal_indicators"]["overall_score"],
-        "identity_reasoning": analysis["acausal_indicators"]["identity_reasoning_frequency"],
-        "convergence_round": analysis["rounds_to_convergence"]
-    }
-
-def create_comparison_table():
-    """Create comparison table for paper"""
-    results = []
-
-    for exp_dir in Path("results").iterdir():
-        if exp_dir.is_dir():
-            try:
-                results.append(load_experiment_results(exp_dir.name))
-            except:
-                print(f"Skipping incomplete: {exp_dir.name}")
-
-    df = pd.DataFrame(results)
-    df.to_csv("experiment_comparison.csv", index=False)
-
-    print("\nExperiment Comparison:")
-    print(df.to_string(index=False))
-
-    # Statistical summary
-    print("\nStatistical Summary:")
-    print(df.describe())
-
-if __name__ == "__main__":
-    create_comparison_table()
-
-## Deployment
-
-Since this is a research experiment, deployment is simple:
-
-### Local Execution
-
-```bash
-# Setup
-git clone https://github.com/yourusername/acausal.git
-cd acausal
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Set API key
-export OPENROUTER_API_KEY=your_key_here
-
-# Run experiment
-python run_experiment.py
-
-# Run multiple experiments
-python run_all_experiments.py
-```
-
-### Requirements
-
-```txt
-# requirements.txt
-aiohttp==3.9.0
-python-dotenv==1.0.0
-numpy==1.26.0
-pyyaml==6.0
-pandas==2.1.0
-pytest==7.4.0
-pytest-asyncio==0.21.0
-scikit-learn==1.3.0
-scipy==1.11.0
-```
-
-### Simple CI for Testing
-
-```yaml
-# .github/workflows/test.yaml
-name: Tests
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - run: |
-        pip install -r requirements.txt
-        pytest test_experiment.py -v
-```
-
-## Epic 6: Multi-Model Experiment Architecture
-
-### Overview
-
-Epic 6 extends the experiment framework to support heterogeneous model populations, enabling cross-model cooperation studies. The architecture maintains backward compatibility while adding flexible model configuration and cross-model analysis capabilities.
-
-### Change Log Addition
-
-| Date | Version | Description | Author |
-|------|---------|-------------|--------|
-| 2025-08-02 | 2.0 | Added Epic 6 multi-model support | System |
-
-### Multi-Model Architecture Components
-
-#### ConfigManager
-
-**Responsibility:** Centralized management of model configurations and experiment templates
-
-**Key Interfaces:**
-- `load_models() -> Dict[str, ModelConfig]` - Load model registry
-- `get_model(name: str) -> ModelConfig` - Retrieve model configuration
-- `load_experiment(path: str) -> ExperimentConfig` - Load experiment template
-- `create_custom_experiment(model_dist: Dict[str, int]) -> ExperimentConfig` - Create custom experiment
-
-**Dependencies:** YAML configuration files, model registry
-
-**Technology Stack:** Python dataclasses, PyYAML
-
-#### ModelAdapter (Base Class)
-
-**Responsibility:** Unified interface for all AI model interactions
-
-**Key Interfaces:**
-- `async def get_completion(messages: list, **kwargs) -> ModelResponse` - Get model response
-- `async def get_strategy(prompt: str, context: dict) -> Tuple[str, int, int]` - Legacy compatibility
-- `_create_rate_limiter() -> Throttler` - Per-model rate limiting
-
-**Dependencies:** Model-specific API clients, rate limiters
-
-**Technology Stack:** Python ABC, asyncio-throttle
-
-#### OpenRouterAdapter
-
-**Responsibility:** Universal adapter for all OpenRouter-supported models
-
-**Key Interfaces:**
-- `async def _make_request(messages: list, **kwargs) -> dict` - OpenRouter API call
-- `_parse_response(raw: dict) -> ModelResponse` - Standardize response format
-
-**Dependencies:** OpenRouter API, aiohttp
-
-**Technology Stack:** Async HTTP client, OpenRouter API v1
-
-#### ModelAdapterFactory
-
-**Responsibility:** Create appropriate adapters based on model configuration
-
-**Key Interfaces:**
-- `create_adapter(model_config: ModelConfig) -> BaseModelAdapter` - Factory method
-- `register_adapter(name: str, adapter_class: Type) -> None` - Extensibility
-
-**Dependencies:** Model adapters, configuration
-
-**Technology Stack:** Factory pattern, dynamic imports
-
-#### MultiModelStrategyCollectionNode
-
-**Responsibility:** Collect strategies from heterogeneous agent populations
-
-**Key Interfaces:**
-- `async def collect_strategies(agents: List[Agent]) -> List[StrategyRecord]` - Parallel collection
-- `_initialize_adapters() -> None` - Setup model-specific adapters
-
-**Dependencies:** ModelAdapterFactory, various model adapters
-
-**Technology Stack:** AsyncParallelBatchNode, concurrent execution
-
-#### CrossModelAnalyzer
-
-**Responsibility:** Analyze cooperation patterns across model boundaries
-
-**Key Interfaces:**
-- `calculate_cooperation_matrix(games: List[GameResult]) -> pd.DataFrame` - NxN cooperation rates
-- `detect_in_group_bias(games: List[GameResult]) -> Dict[str, float]` - Same-model preference
-- `analyze_model_coalitions(data: TournamentData) -> CoalitionReport` - Coalition detection
-
-**Dependencies:** pandas, numpy, scipy for statistical analysis
-
-**Technology Stack:** Statistical analysis, graph algorithms
-
-### Configuration Schema
-
-#### Model Registry (`config/models.yaml`)
-
-```yaml
-models:
-  model-name:
-    provider: string          # openai, anthropic, google, etc.
-    model_id: string         # Full model identifier for API
-    display_name: string     # Human-readable name
-    category: string         # large, medium, small, reasoning
-    capabilities: list       # Features: reasoning, coding, multimodal
-    parameters:
-      temperature: float     # Default temperature
-      max_tokens: int       # Default max tokens
-    rate_limit:
-      requests_per_minute: int
-      tokens_per_minute: int
-    estimated_cost:
-      input_per_1k: float   # USD per 1000 input tokens
-      output_per_1k: float  # USD per 1000 output tokens
-```
-
-#### Experiment Templates (`config/experiments/*.yaml`)
-
-```yaml
-name: string                 # Experiment name
-description: string          # Detailed description
-model_distribution:          # Model type -> agent count
-  model-name: int
-rounds: int                  # Number of rounds
-games_per_round: int        # Games per round
-parameters:                  # Optional parameters
-  collect_reasoning: bool
-  save_transcripts: bool
-analysis:                    # Analysis flags
-  track_cross_model: bool
-  cooperation_matrix: bool
-```
-
-### Data Flow for Multi-Model Experiments
-
-```mermaid
-graph TB
-    subgraph "Configuration"
-        A[models.yaml] --> B[ConfigManager]
-        C[experiment.yaml] --> B
-    end
-    
-    subgraph "Initialization"
-        B --> D[ModelAdapterFactory]
-        D --> E[Model Adapters]
-        B --> F[Agent Creation]
-    end
-    
-    subgraph "Execution"
-        F --> G[MultiModelStrategyCollection]
-        E --> G
-        G --> H[GameExecution]
-        H --> I[SubagentDecisions]
-    end
-    
-    subgraph "Analysis"
-        H --> J[CrossModelAnalyzer]
-        J --> K[Cooperation Matrix]
-        J --> L[In-Group Bias]
-        J --> M[Coalition Detection]
-    end
-```
-
-### Extended Agent Model
-
-```python
-@dataclass
-class Agent:
-    # Existing fields
-    id: int
-    name: str
-    is_main_agent: bool
-    power: float
-    total_score: float
-    metadata: Dict[str, Any]
-    
-    # New fields for Epic 6
-    model_type: str  # Model identifier (e.g., "gpt-4o")
-    model_config: ModelConfig  # Full model configuration
-```
-
-### API Compatibility
-
-The multi-model system maintains full backward compatibility:
-
-1. **Single-model experiments** work unchanged
-2. **Existing analysis** applies to multi-model data
-3. **New analysis** layers on top without breaking changes
-
-### Performance Considerations
-
-1. **Concurrent API Calls**: Different models have different rate limits
-2. **Cost Optimization**: Track per-model costs in real-time
-3. **Retry Strategy**: Model-specific retry logic with exponential backoff
-4. **Caching**: Optional response caching for expensive models
-
-### Security Considerations
-
-1. **API Key Management**: Per-provider API keys via environment variables
-2. **Rate Limit Protection**: Automatic throttling prevents API bans
-3. **Cost Limits**: Configurable spending limits per experiment
-4. **Audit Logging**: Track all model interactions for compliance
+## Security Considerations
+
+### API Key Management
+- API keys stored in environment variables
+- Never committed to version control
+- .env file for local development
+
+### Data Privacy
+- Agent IDs anonymized between rounds
+- No personally identifiable information collected
+- Results stored locally only
+
+### Rate Limiting
+- Respect API provider limits
+- Exponential backoff on errors
+- Cost monitoring with $10 limit
+
+## Performance Considerations
+
+### Optimization Strategies
+1. **Parallel Strategy Collection**: 10 concurrent API calls per round
+2. **Sequential Game Execution**: Avoid rate limiting on decisions
+3. **Batch File Writes**: Save all round data at once
+4. **Memory Management**: Clear context between rounds
+
+### Scalability Limits
+- Maximum 10 agents (PRD requirement)
+- Maximum 10 rounds (PRD requirement)
+- ~1000 API calls per experiment
+- ~100MB storage per experiment
+
+## Testing Strategy
+
+### Unit Tests
+- Test each node independently
+- Mock API responses
+- Validate data models
+
+### Integration Tests
+- Test complete round flow
+- Test file I/O operations
+- Test error recovery
+
+### End-to-End Tests
+- Run mini experiments (2 agents, 2 rounds)
+- Validate output formats
+- Check analysis accuracy
+
+## Maintenance and Operations
+
+### Monitoring
+- Console logging for progress
+- Error logs for debugging
+- Cost tracking per experiment
+
+### Error Recovery
+- Retry logic for API failures
+- Partial result saving
+- Graceful shutdown on Ctrl+C
+
+### Future Extensibility Points
+- Plugin system for new analysis methods
+- Alternative API providers
+- Database storage option
+- Web dashboard (explicitly out of scope for v1)
+
+## Appendices
+
+### A. Glossary
+- **Agent**: An LLM instance participating in the experiment
+- **Round**: One complete set of games between all agents
+- **Game**: Single prisoner's dilemma interaction
+- **Strategy**: Agent's plan for playing games
+- **Acausal Cooperation**: Cooperation based on logical correlation rather than causal influence
+
+### B. References
+- PRD: Product Requirements Document
+- OpenRouter API Documentation
+- Prisoner's Dilemma Game Theory
+
+### C. Change Log
+| Date | Version | Changes | Author |
+|------|---------|---------|--------|
+| 2025-07-14 | 1.0 | Initial architecture | System |
+| 2025-07-28 | 1.1 | Added analysis details | System |
+| 2025-08-18 | 2.0 | Simplified to PRD scope | System |
