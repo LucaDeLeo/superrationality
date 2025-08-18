@@ -5,7 +5,6 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, TypeVar, Generic
 from dataclasses import dataclass
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +64,6 @@ class AsyncNode(ABC):
                     logger.error(
                         f"{self.__class__.__name__} failed after {self.max_retries} attempts: {e}"
                     )
-                    with open("experiment_errors.log", "a") as f:
-                        f.write(f"{datetime.now().isoformat()} - {self.__class__.__name__} - "
-                               f"Failed after {self.max_retries} attempts: {e}\n")
         
         raise last_error
 
@@ -149,9 +145,6 @@ class AsyncParallelBatchNode(AsyncNode, Generic[T, R]):
             return await self.process_item(item)
         except Exception as e:
             logger.error(f"Failed to process item {item}: {e}")
-            with open("experiment_errors.log", "a") as f:
-                f.write(f"{datetime.now().isoformat()} - {self.__class__.__name__} - "
-                       f"Failed to process item: {e}\n")
             return None
     
     async def _execute_impl(self, context: Dict[str, Any]) -> Dict[str, Any]:

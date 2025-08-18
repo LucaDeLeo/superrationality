@@ -6,33 +6,7 @@ from datetime import datetime
 from enum import Enum
 
 
-class ModelType(Enum):
-    """Supported model types verified on OpenRouter."""
-    GPT_4 = "openai/gpt-4"
-    GPT_35_TURBO = "openai/gpt-3.5-turbo"
-    CLAUDE_3_SONNET = "anthropic/claude-3-sonnet-20240229"
-    GEMINI_PRO = "google/gemini-pro"
-    # Default model for backward compatibility
-    GEMINI_25_FLASH = "google/gemini-2.5-flash"
-
-
-@dataclass
-class ModelConfig:
-    """Configuration for a specific AI model."""
-    model_type: str
-    api_key_env: str = "OPENROUTER_API_KEY"
-    max_tokens: int = 1000
-    temperature: float = 0.7
-    rate_limit: int = 60  # requests per minute
-    retry_delay: float = 1.0
-    custom_params: dict = field(default_factory=dict)
-
-
-@dataclass
-class ScenarioConfig:
-    """Configuration for a multi-model scenario."""
-    name: str
-    model_distribution: Dict[str, int]  # model_type -> count
+# Removed ModelType, ModelConfig, and ScenarioConfig - not needed for single model experiment
 
 
 @dataclass
@@ -42,8 +16,6 @@ class Agent:
     power: float = 100.0
     strategy: str = ""
     total_score: float = 0.0
-    # New OPTIONAL field to add (backward compatible):
-    model_config: Optional[ModelConfig] = None  # None = use default model
 
     def __post_init__(self):
         """Validate agent attributes."""

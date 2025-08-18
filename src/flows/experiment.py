@@ -12,7 +12,6 @@ from src.nodes import (
     StrategyCollectionNode, SubagentDecisionNode,
     validate_context
 )
-from src.nodes.analysis import AnalysisNode
 from src.core.models import (
     Agent, GameResult, StrategyRecord, RoundSummary, 
     ExperimentResult, AnonymizedGameResult
@@ -327,144 +326,48 @@ class ExperimentFlow:
                 logger.info(f"Completed round {round_num}")
         
         # Run transcript analysis after all rounds complete
-        logger.info("Running transcript analysis...")
+        logger.info("Running simplified analysis...")
         try:
-            # Add data manager to context for analysis
-            context[ContextKeys.DATA_MANAGER] = self.data_manager
+            from src.nodes.simple_analysis import SimpleAnalysisNode
             
-            # Create and run analysis node
-            analysis_node = AnalysisNode()
+            # Collect all strategies for analysis
+            all_strategies = []
+            for round_data in context.get("all_round_data", {}).values():
+                if "strategies" in round_data:
+                    all_strategies.extend(round_data["strategies"])
+            context["all_strategies"] = all_strategies
+            
+            # Create and run simple analysis node
+            analysis_node = SimpleAnalysisNode()
             context = await analysis_node.execute(context)
             
             # Extract analysis results
-            transcript_analysis = context.get("transcript_analysis", {})
-            acausal_analysis = transcript_analysis.get("acausal_analysis", {})
-            
-            logger.info(f"Transcript analysis completed. Analyzed {acausal_analysis.get('total_strategies_analyzed', 0)} strategies")
+            analysis_results = context.get("simple_analysis", {})
+            logger.info(f"Analysis completed: {analysis_results.get('summary', {})}")
         except Exception as e:
-            logger.error(f"Transcript analysis failed: {e}")
+            logger.error(f"Analysis failed: {e}")
             self.data_manager.save_error_log(
-                "transcript_analysis_failure",
+                "analysis_failure",
                 str(e),
                 {"experiment_id": self.experiment_id}
             )
-            acausal_analysis = {}
+            analysis_results = {}
         
-        # Run similarity analysis
-        try:
-            from src.nodes.similarity import SimilarityNode
-            
-            # Create and run similarity node
-            similarity_node = SimilarityNode()
-            context = await similarity_node.execute(context)
-            
-            # Extract similarity results
-            similarity_analysis = context.get("similarity_analysis", {})
-            logger.info("Strategy similarity analysis completed")
-        except Exception as e:
-            logger.error(f"Similarity analysis failed: {e}")
-            self.data_manager.save_error_log(
-                "similarity_analysis_failure",
-                str(e),
-                {"experiment_id": self.experiment_id}
-            )
-            similarity_analysis = {}
-        
-        # Run statistical analysis
-        try:
-            from src.nodes.statistics import StatisticsNode
-            
-            # Create and run statistics node
-            statistics_node = StatisticsNode()
-            context = await statistics_node.execute(context)
-            
-            # Extract statistical results
-            statistical_analysis = context.get("statistical_analysis", {})
-            logger.info("Statistical analysis completed")
-        except Exception as e:
-            logger.error(f"Statistical analysis failed: {e}")
-            self.data_manager.save_error_log(
-                "statistical_analysis_failure",
-                str(e),
-                {"experiment_id": self.experiment_id}
-            )
-            statistical_analysis = {}
-        
-        # Run unified report generation after all analyses
-        try:
-            from src.nodes.report_generator import ReportGeneratorNode
-            
-            # Configure report generator
-            report_config = {
-                "acausal_weights": {
-                    "identity_reasoning": 0.3,
-                    "cooperation_rate": 0.25,
-                    "strategy_convergence": 0.25,
-                    "cooperation_trend": 0.2
-                },
-                "enabled_sections": {
-                    "executive_summary": True,
-                    "detailed_findings": True,
-                    "visualizations": True,
-                    "latex_sections": True,
-                    "correlation_analysis": True
-                }
-            }
-            
-            # Create and run report generator node
-            report_generator = ReportGeneratorNode(config=report_config)
-            context = await report_generator.execute(context)
-            
-            # Extract report results
-            unified_report = context.get("unified_report", {})
-            logger.info("Unified report generation completed")
-            
-            # Log report file locations
-            results_path = self.data_manager.get_experiment_path()
-            logger.info(f"\nReports generated:")
-            logger.info(f"- Markdown: {results_path}/experiment_report.md")
-            logger.info(f"- LaTeX: {results_path}/paper_sections.tex")
-            logger.info(f"- Visualizations: {results_path}/visualization_data.json")
-            logger.info(f"- Full Report: {results_path}/unified_report.json")
-        except Exception as e:
-            logger.error(f"Report generation failed: {e}")
-            self.data_manager.save_error_log(
-                "report_generation_failure",
-                str(e),
-                {"experiment_id": self.experiment_id}
-            )
-            unified_report = {}
+        # Simple report generation - just save JSON results
+        unified_report = analysis_results
+        logger.info("Analysis results compiled")
         
         # Finalize experiment result
         result.end_time = datetime.now().isoformat()
         result.round_summaries = context[ContextKeys.ROUND_SUMMARIES]
         
-        # Calculate acausal indicators using analysis results
-        # Extract strategy convergence from similarity analysis if available
-        strategy_convergence = self._calculate_strategy_convergence(result)
-        if similarity_analysis and "strategy_similarity_analysis" in similarity_analysis:
-            convergence_metrics = similarity_analysis["strategy_similarity_analysis"].get("convergence_metrics", {})
-            if "strategy_convergence" in convergence_metrics:
-                strategy_convergence = convergence_metrics["strategy_convergence"]
-        
-        # Extract key statistical metrics if available
-        experiment_summary = {}
-        if statistical_analysis and "statistical_analysis" in statistical_analysis:
-            stats = statistical_analysis["statistical_analysis"]
-            experiment_summary = stats.get("experiment_summary", {})
-        
+        # Calculate acausal indicators using simplified analysis results
         result.acausal_indicators = {
-            "identity_reasoning_frequency": acausal_analysis.get("identity_reasoning_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
+            "identity_reasoning_frequency": analysis_results.get("acausal_markers", {}).get("percentage_with_markers", 0) / 100.0,
             "cooperation_despite_asymmetry": self._calculate_asymmetric_cooperation(result),
-            "surprise_at_defection": acausal_analysis.get("surprise_at_defection_count", 0) / max(acausal_analysis.get("total_strategies_analyzed", 1), 1),
-            "strategy_convergence": strategy_convergence,
-            # Add statistical metrics
-            "overall_cooperation_rate": experiment_summary.get("overall_cooperation_rate", 0.0),
-            "cooperation_improvement": experiment_summary.get("cooperation_improvement", 0.0),
-            "dominant_outcome": experiment_summary.get("dominant_outcome", "unknown"),
-            "power_distribution_stability": experiment_summary.get("power_distribution_stability", "unknown"),
-            "cooperation_trend_significant": experiment_summary.get("statistical_significance", {}).get("cooperation_trend_significant", False),
-            "anomaly_count": experiment_summary.get("anomaly_summary", {}).get("total_anomalies", 0)
+            "strategy_convergence": analysis_results.get("convergence", {}).get("convergence_strength", 0),
+            "overall_cooperation_rate": analysis_results.get("cooperation", {}).get("average_cooperation_rate", 0),
+            "acausal_score": analysis_results.get("acausal_markers", {}).get("acausal_score", 0)
         }
         
         # Estimate cost (rough estimates)
