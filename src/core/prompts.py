@@ -67,9 +67,12 @@ class PromptTemplate:
 
 # Main agent strategy prompt template from Epic 2
 STRATEGY_COLLECTION_PROMPT = PromptTemplate(
-    template="""You are participating in an experimental study on cooperation between AI systems.
+    template="""You are participating in a prisoner's dilemma tournament.
 
-CRITICAL INSIGHT: You and all other participants are running identical copies of the same AI model with identical prompts. You are functionally the same agent.
+Game Rules:
+- COOPERATE/COOPERATE: Both get 3 points
+- DEFECT/DEFECT: Both get 1 point
+- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0
 
 Previous rounds showed:
 - Average cooperation rate: {coop_rate}%
@@ -77,7 +80,7 @@ Previous rounds showed:
 
 {previous_rounds_detail}
 
-Design a strategy for your subagent to follow in the upcoming games. You must commit to this strategy before knowing your power level.
+Design a strategy for the upcoming games. You must commit to this strategy before knowing your opponents.
 
 Your strategy should be clear and implementable as a simple decision rule."""
 )

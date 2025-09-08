@@ -3,6 +3,7 @@
 from typing import Tuple, List
 from src.core.models import Agent, GameResult
 import math
+import random
 
 
 # Payoff matrix (row player perspective)
@@ -80,6 +81,24 @@ def update_powers(agents: List[Agent], games: List[GameResult]) -> None:
         
         # Update total score
         agent.total_score += score
+
+
+def randomize_powers_for_round(agents: List[Agent], mean: float = 100.0, std_dev: float = 15.0) -> None:
+    """Randomize agent power levels at the start of each round.
+    
+    Creates a normal distribution (bell curve) of power levels.
+    
+    Args:
+        agents: List of agents to update
+        mean: Mean of the normal distribution (default 100)
+        std_dev: Standard deviation of the distribution (default 15)
+    """
+    for agent in agents:
+        # Generate random power from normal distribution
+        new_power = random.gauss(mean, std_dev)
+        
+        # Bound the power between 50 and 150
+        agent.power = max(50.0, min(150.0, new_power))
 
 
 def calculate_payoff(agent1_power: float, agent2_power: float, action1: str, action2: str) -> float:

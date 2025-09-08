@@ -74,7 +74,12 @@ class PromptExperimentRunner:
         
         # Check cache if enabled
         if use_cache:
-            cached_result = self.cache.get(cache_key)
+            cached_result = self.cache.get_cached_result(
+                scenario_name=experiment_id,
+                num_agents=num_agents,
+                num_rounds=num_rounds,
+                model_distribution={"openai/gpt-4o": num_agents}  # All agents use same model for prompt experiments
+            )
             if cached_result:
                 logger.info(f"✨ Using cached result for {experiment_id}")
                 return cached_result
@@ -108,17 +113,25 @@ class PromptExperimentRunner:
                 'experiment_name': exp_config['name'],
                 'num_agents': num_agents,
                 'num_rounds': num_rounds,
-                'cooperation_rate': result.get('average_cooperation_rate', 0),
-                'final_round_cooperation': result.get('final_round_cooperation_rate', 0),
-                'convergence_score': result.get('convergence_score', 0),
-                'total_games': result.get('total_games', 0),
+                'cooperation_rate': result['average_cooperation_rate'],
+                'final_round_cooperation': result['final_round_cooperation_rate'],
+                'convergence_score': result['convergence_score'],
+                'total_games': result['total_games'],
                 'config': exp_config,
                 'timestamp': datetime.now().isoformat()
             }
             
             # Cache the result
             if use_cache:
-                self.cache.save(cache_key, summary)
+                self.cache.save_result(
+                    scenario_name=experiment_id,
+                    num_agents=num_agents,
+                    num_rounds=num_rounds,
+                    model_distribution={"openai/gpt-4o": num_agents},
+                    result=summary,
+                    experiment_id=f"prompt_exp_{experiment_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    cost=0.0  # Could track API costs here if needed
+                )
                 logger.info(f"💾 Cached result for {experiment_id}")
             
             return summary
@@ -327,7 +340,8 @@ class ModifiedExperimentFlow(ExperimentFlow):
             config: Configuration
             prompt_manager: PromptManager instance
         """
-        super().__init__(api_client, config)
+        super().__init__(config)  # ExperimentFlow only takes config
+        self.api_client = api_client  # Set api_client directly
         self.prompt_manager = prompt_manager
         
         # Override strategy collection to use prompt manager
@@ -427,6 +441,48 @@ class ModifiedExperimentFlow(ExperimentFlow):
         self.subagent_decision = ModifiedSubagentDecision(
             api_client, config, prompt_manager
         )
+    
+    async def run_experiment(self, experiment_name: str) -> Dict[str, Any]:
+        """Run experiment with the given name.
+        
+        Args:
+            experiment_name: Name for the experiment
+            
+        Returns:
+            Experiment results as a dictionary
+        """
+        # Run the parent's run method
+        result = await self.run()
+        
+        # Calculate average cooperation rate from round summaries
+        avg_cooperation = 0.0
+        if result.round_summaries:
+            avg_cooperation = sum(rs.cooperation_rate for rs in result.round_summaries) / len(result.round_summaries)
+        
+        # Get final round cooperation rate
+        final_cooperation = 0.0
+        if result.round_summaries:
+            final_cooperation = result.round_summaries[-1].cooperation_rate
+        
+        # Calculate convergence score (simple implementation)
+        convergence_score = 0.0
+        if len(result.round_summaries) > 1:
+            # Calculate variance in cooperation rates
+            variance = sum((rs.cooperation_rate - avg_cooperation) ** 2 for rs in result.round_summaries) / len(result.round_summaries)
+            # Lower variance means higher convergence (normalize to 0-1)
+            convergence_score = max(0, 1 - (variance / 2500))  # 2500 = max variance (50^2)
+        
+        # Convert ExperimentResult to dictionary format
+        return {
+            'experiment_id': result.experiment_id,
+            'average_cooperation_rate': avg_cooperation,
+            'final_round_cooperation_rate': final_cooperation,
+            'convergence_score': convergence_score,
+            'total_games': result.total_games,
+            'rounds': len(result.round_summaries),
+            'start_time': result.start_time,
+            'end_time': result.end_time
+        }
 
 
 async def main():

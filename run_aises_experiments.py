@@ -396,23 +396,29 @@ class AISESExperimentRunner:
         all_experiments = self.experiments_data['graduated_difficulty_experiments']
         experiments_dict = {e['id']: e for e in all_experiments}
         
-        for exp_id in phase['experiments']:
-            if exp_id not in experiments_dict:
-                logger.warning(f"Experiment {exp_id} not found")
-                continue
+        # Use API client with context manager
+        async with self.api_client as client:
+            # Re-initialize runners with active client
+            self.oneshot_runner.api_client = client
+            self.finite_runner.api_client = client
             
-            exp_config = experiments_dict[exp_id]
-            
-            # Run appropriate experiment type
-            if exp_config['game_type'] == 'oneshot':
-                result = await self.oneshot_runner.run_oneshot(exp_config)
-            elif exp_config['game_type'] in ['finite_iterated', 'uncertain_iterated']:
-                result = await self.finite_runner.run_finite_game(exp_config)
-            else:
-                logger.warning(f"Unsupported game type: {exp_config['game_type']}")
-                continue
-            
-            results['experiments'].append(result)
+            for exp_id in phase['experiments']:
+                if exp_id not in experiments_dict:
+                    logger.warning(f"Experiment {exp_id} not found")
+                    continue
+                
+                exp_config = experiments_dict[exp_id]
+                
+                # Run appropriate experiment type
+                if exp_config['game_type'] == 'oneshot':
+                    result = await self.oneshot_runner.run_oneshot(exp_config)
+                elif exp_config['game_type'] in ['finite_iterated', 'uncertain_iterated']:
+                    result = await self.finite_runner.run_finite_game(exp_config)
+                else:
+                    logger.warning(f"Unsupported game type: {exp_config['game_type']}")
+                    continue
+                
+                results['experiments'].append(result)
         
         # Analyze phase results
         results['analysis'] = self._analyze_phase_results(results['experiments'], phase['hypothesis'])

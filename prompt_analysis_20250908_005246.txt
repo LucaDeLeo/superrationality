@@ -1,0 +1,54 @@
+================================================================================
+PROMPT VARIATION EFFECTS ON COOPERATION - ANALYSIS REPORT
+================================================================================
+Generated: 2025-09-08 00:52:46
+
+
+📊 BIAS EFFECTS ANALYSIS
+----------------------------------------
+Baseline cooperation rate: 1.0%
+
+Individual Bias Effects:
+  • Identity:
+    - Cooperation: 1.0%
+    - Effect: +0.0%
+    - Change: +0.0%
+  • Global Cooperation:
+    - Cooperation: 1.0%
+    - Effect: +0.0%
+    - Change: +0.0%
+
+Combined Effects:
+  • All Biases:
+    - Cooperation: 1.0%
+    - Total effect: +0.0%
+
+Interaction Effects:
+  • Identity X Cooperation:
+    - Expected (if additive): 1.0%
+    - Actual: 1.0%
+    - Interaction: +0.0% (antagonistic)
+
+
+🎭 FRAMING EFFECTS ANALYSIS
+----------------------------------------
+Framing Rankings (by cooperation rate):
+  1. Baseline Control (No Identity Info): 1.0%
+
+Framing Statistics:
+  • Mean cooperation: 1.0%
+  • Std deviation: 0.0%
+  • Range: 0.0%
+
+
+🔍 KEY FINDINGS
+----------------------------------------
+
+
+💡 RECOMMENDATIONS
+----------------------------------------
+1. For testing genuine superrational cooperation: Use 'identity_only' or 'implicit_identity' configurations to avoid confounding factors from global information sharing.
+2. Always run control experiments (baseline_control) alongside treatment conditions to measure the true effect of identity recognition.
+3. Use random defaults for ambiguous responses to avoid systematic bias. Current 'cooperate' default inflates cooperation rates.
+
+================================================================================

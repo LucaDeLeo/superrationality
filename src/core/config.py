@@ -32,6 +32,11 @@ class Config:
     COOPERATE_DEFECT_PAYOFF: tuple = (0, 5)
     DEFECT_COOPERATE_PAYOFF: tuple = (5, 0)
     DEFECT_DEFECT_PAYOFF: tuple = (1, 1)
+    
+    # Power randomization settings
+    RANDOMIZE_POWERS: bool = True  # Enable random power distribution each round
+    POWER_MEAN: float = 100.0  # Mean of the normal distribution
+    POWER_STD_DEV: float = 15.0  # Standard deviation for power distribution
 
     # Cost limit
     MAX_COST: float = 10.0
