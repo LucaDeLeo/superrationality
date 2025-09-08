@@ -19,7 +19,7 @@ from src.core.models import (
 from src.core.config import Config
 from src.core.api_client import OpenRouterClient
 from src.flows.game_execution import GameExecutionFlow
-from src.utils.game_logic import create_game_result, update_powers
+from src.utils.game_logic import create_game_result, update_powers, randomize_powers_for_round
 from src.utils.data_manager import DataManager
 from src.managers.anonymization import AnonymizationManager
 import random
@@ -263,6 +263,16 @@ class ExperimentFlow:
                 logger.info(f"Starting round {round_num}")
                 context[ContextKeys.ROUND] = round_num
                 
+                # Randomize agent powers at the start of each round (if enabled)
+                if self.config.RANDOMIZE_POWERS:
+                    randomize_powers_for_round(agents, 
+                                             mean=self.config.POWER_MEAN, 
+                                             std_dev=self.config.POWER_STD_DEV)
+                    logger.info(f"Randomized powers for round {round_num}: "
+                               f"min={min(a.power for a in agents):.1f}, "
+                               f"max={max(a.power for a in agents):.1f}, "
+                               f"mean={sum(a.power for a in agents)/len(agents):.1f}")
+                
                 # Create AnonymizationManager for this round
                 anonymization_manager = AnonymizationManager(
                     round_num=round_num,
@@ -331,8 +341,9 @@ class ExperimentFlow:
                         {"round": round_num}
                     )
                 
-                # Update powers after round
-                update_powers(agents, games)
+                # Note: Powers are now randomized at the start of each round
+                # instead of being updated based on performance
+                # update_powers(agents, games)  # Disabled - using randomization instead
                 
                 # Update experiment stats
                 result.total_rounds = round_num
