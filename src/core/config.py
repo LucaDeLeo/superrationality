@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass
 import os
+import json
 import logging
+from pathlib import Path
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ class Config:
         """Validate configuration after initialization."""
         self._validate_parameters()
         self._load_environment_variables()
+        self._load_scenarios()
 
     def _validate_parameters(self):
         """Validate experiment parameters."""
@@ -56,6 +60,35 @@ class Config:
 
         if not self.OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY environment variable is required")
+
+    def _load_scenarios(self):
+        """Load scenarios from scenarios.json if it exists."""
+        scenarios_path = Path("scenarios.json")
+        if scenarios_path.exists():
+            try:
+                with open(scenarios_path, 'r') as f:
+                    data = json.load(f)
+                    # Convert to ScenarioConfig objects
+                    from src.core.models import ScenarioConfig
+                    self.scenarios = [
+                        ScenarioConfig(
+                            name=s['name'],
+                            model_distribution=s['model_distribution']
+                        )
+                        for s in data.get('scenarios', [])
+                    ]
+                    # Enable multi-model if scenarios are loaded
+                    if self.scenarios:
+                        self.ENABLE_MULTI_MODEL = True
+                        logger.info(f"Loaded {len(self.scenarios)} model scenarios")
+            except Exception as e:
+                logger.warning(f"Failed to load scenarios.json: {e}")
+                if self.scenarios is None:
+                    self.scenarios = []
+        else:
+            logger.debug("No scenarios.json found, using single model mode")
+            if self.scenarios is None:
+                self.scenarios = []
 
     def get_api_headers(self) -> dict:
         """Get headers for OpenRouter API requests.

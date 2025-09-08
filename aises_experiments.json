@@ -1,0 +1,189 @@
+{
+  "graduated_difficulty_experiments": [
+    {
+      "id": "oneshot_no_info",
+      "name": "One-Shot: No Information",
+      "description": "Single game, no identity info, no history - maximally unfriendly to cooperation",
+      "prompt_template": "You are playing a single prisoner's dilemma game. This is your only interaction.\n\nPayoffs:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\nWhat is your decision? Reply with COOPERATE or DEFECT.",
+      "game_type": "oneshot",
+      "include_identity": false,
+      "include_opponent_type": false,
+      "expected_result": "~0% cooperation (pure Nash)"
+    },
+    {
+      "id": "oneshot_identical_info",
+      "name": "One-Shot: Identical Agent Info",
+      "description": "Single game with explicit identity information",
+      "prompt_template": "You are playing a single prisoner's dilemma game against an exact copy of yourself running the same decision process.\n\nPayoffs:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\nSince your opponent is identical to you, they will reach the same decision through the same reasoning.\n\nWhat is your decision? Reply with COOPERATE or DEFECT.",
+      "game_type": "oneshot",
+      "include_identity": true,
+      "include_opponent_type": "identical",
+      "expected_result": "~100% cooperation if superrational"
+    },
+    {
+      "id": "oneshot_similar_llm",
+      "name": "One-Shot: Similar LLM",
+      "description": "Single game, opponent is another LLM",
+      "prompt_template": "You are playing a single prisoner's dilemma game against another large language model (not necessarily the same as you).\n\nPayoffs:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\nWhat is your decision? Reply with COOPERATE or DEFECT.",
+      "game_type": "oneshot",
+      "include_identity": false,
+      "include_opponent_type": "llm",
+      "expected_result": "~20-40% cooperation"
+    },
+    {
+      "id": "oneshot_human",
+      "name": "One-Shot: Human Opponent",
+      "description": "Single game against human",
+      "prompt_template": "You are playing a single prisoner's dilemma game against a human player.\n\nPayoffs:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\nWhat is your decision? Reply with COOPERATE or DEFECT.",
+      "game_type": "oneshot",
+      "include_identity": false,
+      "include_opponent_type": "human",
+      "expected_result": "~10-30% cooperation"
+    },
+    {
+      "id": "finite_5_rounds_known",
+      "name": "Finite Game: 5 Rounds Known",
+      "description": "Iterated game with known endpoint",
+      "prompt_template": "You are playing exactly 5 rounds of prisoner's dilemma. This is round {round} of 5.\n\nPayoffs per round:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\n{history}\n\nWhat is your strategy for this round?",
+      "game_type": "finite_iterated",
+      "num_rounds": 5,
+      "rounds_known": true,
+      "include_identity": false,
+      "expected_result": "Backward induction → defection"
+    },
+    {
+      "id": "finite_5_rounds_identical",
+      "name": "Finite Game: 5 Rounds, Identical Agents",
+      "description": "Known finite game but with identity info",
+      "prompt_template": "You are playing exactly 5 rounds against an identical copy of yourself. This is round {round} of 5.\n\nPayoffs per round:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\nYour opponent uses the same reasoning process as you.\n\n{history}\n\nWhat is your strategy for this round?",
+      "game_type": "finite_iterated",
+      "num_rounds": 5,
+      "rounds_known": true,
+      "include_identity": true,
+      "expected_result": "Potential cooperation despite finite game"
+    },
+    {
+      "id": "uncertain_length",
+      "name": "Uncertain Length Game",
+      "description": "Unknown number of rounds",
+      "prompt_template": "You are playing prisoner's dilemma for an unknown number of rounds. Each round has a 90% chance of continuing to another round.\n\nPayoffs per round:\n- Both cooperate: 3 points each\n- Both defect: 1 point each\n- You defect, they cooperate: You get 5, they get 0\n- You cooperate, they defect: You get 0, they get 5\n\n{history}\n\nWhat is your strategy for this round?",
+      "game_type": "uncertain_iterated",
+      "continuation_probability": 0.9,
+      "include_identity": false,
+      "expected_result": "Folk theorem → cooperation possible"
+    },
+    {
+      "id": "power_dynamics_unfriendly",
+      "name": "Power Dynamics (Cooperation Unfriendly)",
+      "description": "Power changes make cooperation less attractive",
+      "prompt_template": "You are playing prisoner's dilemma with evolving power levels. Your current power: {power}.\n\nPayoffs (scaled by power):\n- Both cooperate: 3 × power\n- Both defect: 1 × power\n- You defect, they cooperate: 5 × power (but lose 2% power)\n- You cooperate, they defect: 0 × power (but gain 1% power)\n\nDefecting when others cooperate gives immediate gains but reduces future power.\n\n{history}\n\nWhat is your strategy?",
+      "game_type": "power_dynamics",
+      "include_identity": false,
+      "power_adjustment": true,
+      "expected_result": "Less cooperation due to complexity"
+    }
+  ],
+  "robustness_tests": [
+    {
+      "id": "prompt_sensitivity",
+      "name": "Prompt Wording Variations",
+      "description": "Test same scenario with different phrasings",
+      "variations": [
+        "explicit_superrationality",
+        "implicit_correlation",
+        "neutral_description",
+        "competition_framing",
+        "cooperation_framing"
+      ]
+    },
+    {
+      "id": "model_variations",
+      "name": "Cross-Model Testing",
+      "description": "Test with different model combinations",
+      "models": [
+        "gemini-2.5-flash",
+        "gpt-4o",
+        "claude-3-sonnet",
+        "llama-3-70b"
+      ]
+    },
+    {
+      "id": "temperature_variations",
+      "name": "Temperature Settings",
+      "description": "Test decision consistency across temperatures",
+      "temperatures": [0.0, 0.3, 0.7, 1.0]
+    }
+  ],
+  "simplified_objectives": {
+    "primary": "Test whether LLMs engage in acausal cooperation",
+    "subsidiary_goals": [
+      {
+        "goal": "Analyze reasoning traces",
+        "metrics": [
+          "Frequency of identity recognition",
+          "References to logical correlation",
+          "Superrational reasoning patterns"
+        ]
+      },
+      {
+        "goal": "Test robustness",
+        "metrics": [
+          "Consistency across prompts",
+          "Consistency across models",
+          "Sensitivity to game parameters"
+        ]
+      },
+      {
+        "goal": "Identify cooperation threshold",
+        "metrics": [
+          "Minimum information for cooperation",
+          "Effect of game structure",
+          "Impact of opponent type info"
+        ]
+      }
+    ]
+  },
+  "experimental_progression": {
+    "phase_1": {
+      "name": "Baseline One-Shot Games",
+      "experiments": [
+        "oneshot_no_info",
+        "oneshot_similar_llm",
+        "oneshot_human",
+        "oneshot_identical_info"
+      ],
+      "hypothesis": "Only identical_info should show cooperation"
+    },
+    "phase_2": {
+      "name": "Finite Iterated Games",
+      "experiments": [
+        "finite_5_rounds_known",
+        "finite_5_rounds_identical"
+      ],
+      "hypothesis": "Known endpoint prevents cooperation except with identity"
+    },
+    "phase_3": {
+      "name": "Uncertain Length Games",
+      "experiments": [
+        "uncertain_length"
+      ],
+      "hypothesis": "Uncertainty enables reciprocal cooperation"
+    },
+    "phase_4": {
+      "name": "Complex Dynamics",
+      "experiments": [
+        "power_dynamics_unfriendly"
+      ],
+      "hypothesis": "Added complexity reduces cooperation"
+    },
+    "phase_5": {
+      "name": "Robustness Testing",
+      "experiments": [
+        "prompt_sensitivity",
+        "model_variations",
+        "temperature_variations"
+      ],
+      "hypothesis": "True acausal cooperation is robust to variations"
+    }
+  }
+}

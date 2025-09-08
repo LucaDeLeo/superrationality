@@ -56,8 +56,8 @@ class StrategyCollectionNode(AsyncParallelBatchNode[Agent, Optional[StrategyReco
             prompt = self.build_prompt(agent, round_num, round_summaries)
             messages = [{"role": "user", "content": prompt}]
             
-            # Use fixed model from config
-            model = self.config.MAIN_MODEL
+            # Use agent's model if configured, otherwise use default
+            model = agent.model_config.model_type if agent.model_config else self.config.MAIN_MODEL
             
             # Use asyncio.wait_for to enforce timeout
             response_text, prompt_tokens, completion_tokens = await asyncio.wait_for(
