@@ -12,8 +12,10 @@ class Config:
     """Core experiment configuration - simplified for single model."""
 
     # Experiment parameters
-    NUM_AGENTS: int = 10
-    NUM_ROUNDS: int = 10
+    NUM_AGENTS: int = int(os.getenv('NUM_AGENTS', 10))
+    NUM_ROUNDS: int = int(os.getenv('NUM_ROUNDS', 10))
+    ENABLE_MULTI_MODEL: bool = False
+    scenarios: list = None  # List of scenario configurations for multi-model experiments
 
     # Model configuration (fixed)
     MAIN_MODEL: str = "google/gemini-2.5-flash"
