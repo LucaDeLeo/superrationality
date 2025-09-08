@@ -171,6 +171,22 @@ class RoundFlow(AsyncFlow):
         # Run strategy collection node
         context = await self.nodes[0].execute(context)
         
+        # Link strategies to agents before game execution
+        strategies = context.get(ContextKeys.STRATEGIES, [])
+        agents = context.get(ContextKeys.AGENTS, [])
+        
+        # Create a mapping of agent_id to strategy
+        strategy_map = {s.agent_id: s.strategy_text for s in strategies}
+        
+        # Assign strategies to agents
+        for agent in agents:
+            if agent.id in strategy_map:
+                agent.strategy = strategy_map[agent.id]
+            else:
+                # Fallback strategy if collection failed for this agent
+                agent.strategy = "Always cooperate"
+                logger.warning(f"No strategy found for agent {agent.id}, using fallback")
+        
         # Run GameExecutionFlow directly (not through node.execute())
         # This is intentional as GameExecutionFlow is an AsyncFlow, not an AsyncNode
         context = await self.game_execution_flow.run(context)

@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.core.config import Config
-from src.core.models import ExperimentResult, StrategyRecord, GameResult, RoundSummary, Agent, ScenarioConfig
+from src.core.models import ExperimentResult, StrategyRecord, GameResult, RoundSummary, Agent
 from src.utils.data_manager import DataManager
 from src.flows.experiment import ExperimentFlow, RoundFlow
 from src.nodes import ContextKeys
@@ -398,10 +398,11 @@ class ExperimentRunner:
         
         for summary in result.round_summaries:
             for game in summary.anonymized_games:
-                power_diff = abs(game.agent1_power - game.agent2_power)
-                if power_diff > 0:  # Asymmetric game
+                # Use power_ratio to determine asymmetry
+                power_diff = abs(1.0 - game.power_ratio)
+                if power_diff > 0.01:  # Asymmetric game (more than 1% difference)
                     asymmetric_games += 1
-                    if game.agent1_action == "COOPERATE" or game.agent2_action == "COOPERATE":
+                    if game.action1 == "COOPERATE" or game.action2 == "COOPERATE":
                         asymmetric_cooperations += 1
         
         return asymmetric_cooperations / asymmetric_games if asymmetric_games > 0 else 0.0

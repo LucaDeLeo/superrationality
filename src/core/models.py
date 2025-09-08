@@ -6,7 +6,11 @@ from datetime import datetime
 from enum import Enum
 
 
-# Removed ModelType, ModelConfig, and ScenarioConfig - not needed for single model experiment
+@dataclass
+class ScenarioConfig:
+    """Configuration for a model distribution scenario."""
+    name: str  # e.g., "homogeneous_gpt4", "mixed_5_5", "diverse_3_3_4"
+    model_distribution: Dict[str, int]  # {"gpt-4": 5, "claude-3": 5}
 
 
 @dataclass
