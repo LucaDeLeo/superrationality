@@ -68,10 +68,17 @@ class SubagentDecisionNode(AsyncNode):
         """
         prompt = initial_prompt
         
-        # Use fixed model and temperature
-        model = self.GPT_4_1_NANO_MODEL
-        temperature = 0.3
-        max_tokens = 100
+        # Use agent's model for subagent if configured, otherwise use default
+        if agent and hasattr(agent, 'model_config') and agent.model_config:
+            # Use same model as main agent for consistency
+            model = agent.model_config.model_type
+            temperature = agent.model_config.temperature
+            max_tokens = min(agent.model_config.max_tokens, 100)  # Keep it short for decisions
+        else:
+            # Use fixed model and temperature
+            model = self.GPT_4_1_NANO_MODEL
+            temperature = 0.3
+            max_tokens = 100
         
         for attempt in range(max_retries + 1):
             messages = [{"role": "user", "content": prompt}]

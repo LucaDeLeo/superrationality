@@ -1,236 +1,486 @@
-# Acausal Cooperation Experiment
+# ULTRATHINK: Acausal Cooperation Experiment Framework
 
-An experimental framework for testing acausal cooperation between AI agents in prisoner's dilemma scenarios.
+An advanced experimental framework for testing superrational cooperation between AI agents in prisoner's dilemma scenarios, now with comprehensive multi-model testing capabilities.
 
-## Overview
+## 🎯 Overview
 
-This project implements a comprehensive testing framework to study whether identical AI agents can achieve superrational cooperation through recognition of their shared decision process. The experiment tests the hypothesis that AI agents, when aware of their identical nature, will cooperate at higher rates than traditional game theory would predict.
+ULTRATHINK tests whether AI agents can achieve **superrational cooperation** through recognition of their shared decision process. The framework now supports testing across 15+ different AI models to compare cooperation patterns between different AI systems.
 
-## Key Features
+### Key Hypothesis
+When AI agents recognize they are functionally identical or similar, they should cooperate at rates exceeding Nash equilibrium predictions (approaching 70-90% instead of the typical ~50%).
 
-- **Multi-Agent Tournament System**: Round-robin prisoner's dilemma tournaments
-- **Identity Awareness**: Agents are informed they are identical copies
-- **Power Dynamics**: Asymmetric payoffs based on accumulated power
-- **Comprehensive Analysis**: Pattern detection for acausal reasoning
-- **Multi-Model Support** (New in v2.0): Test cooperation across different AI models
+**⚠️ Note**: Initial results showing 100% cooperation were found to be artifacts of experimental biases. Use the prompt experimentation framework for properly controlled tests.
 
-## Installation
+## ✨ Key Features
+
+- **Multi-Agent Tournament System**: Round-robin prisoner's dilemma tournaments with power dynamics
+- **Prompt Experimentation Framework** 🆕: Test different prompt conditions to isolate biases
+- **Multi-Model Testing**: Compare cooperation across 15+ different AI models
+- **Scenario Management**: 28 pre-configured test scenarios
+- **Result Caching**: Automatic caching to avoid re-running expensive experiments
+- **Comprehensive Analysis**: Pattern detection, convergence analysis, model comparison
+- **Bias Isolation Tools** 🆕: Identify and measure experimental artifacts
+- **Batch Experiments**: Run multiple scenarios automatically with comparison reports
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/acausal.git
-cd acausal
+git clone https://github.com/LucaDeLeo/superrationality.git
+cd superrationality
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install uv (recommended) or use pip
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 # Set up environment variables
 cp .env.example .env
 # Edit .env and add your OPENROUTER_API_KEY
 ```
 
-## Quick Start
-
-### Running a Basic Experiment
+### Running Your First Experiment
 
 ```bash
-# Run the default experiment (10 identical agents, 10 rounds)
-python run_experiment.py
+# Run a simple 2-agent test
+uv run python run_minimal_experiment.py
+
+# Run default 10-agent experiment
+uv run python run_experiment.py
+
+# Run with rate limiting (for free tier)
+uv run python run_experiment_with_rate_limit.py
 ```
 
-### Running Multi-Model Experiments (v2.0)
+## 🔬 Experimental Systems
+
+### 1️⃣ Prompt Experimentation Framework
+
+**Important**: Our analysis revealed that the original setup contains several biases that artificially inflate cooperation rates. Use the prompt experimentation system to run unbiased tests.
 
 ```bash
-# List available models
-python run_multi_model_experiment.py --list-models
+# Run unbiased baseline (expected: ~50% cooperation)
+uv run python run_prompt_experiment.py --experiment baseline_control
 
-# List pre-configured experiments
-python run_multi_model_experiment.py --list-experiments
+# Test genuine superrationality (expected: 70-90% if real)
+uv run python run_prompt_experiment.py --experiment identity_only
 
-# Run a pre-configured experiment
-python run_multi_model_experiment.py --template balanced_gpt_claude
-
-# Run with custom model distribution
-python run_multi_model_experiment.py --models '{"gpt-4o": 5, "claude-4-opus": 5}'
-
-# Run with parameter overrides
-python run_multi_model_experiment.py --template homogeneous_gpt4 --rounds 20
+# Compare all bias effects
+uv run python run_prompt_experiment.py --meta bias_isolation
 ```
 
-## Project Structure
+[See PROMPT_EXPERIMENTS.md for full documentation](PROMPT_EXPERIMENTS.md)
 
-```
-acausal/
-├── config/                  # Configuration files
-│   ├── models.yaml         # Model registry
-│   └── experiments/        # Experiment templates
-├── docs/                   # Documentation
-│   ├── architecture.md     # System architecture
-│   ├── prd/               # Product requirements
-│   └── api/               # API documentation
-├── src/                    # Source code
-│   ├── core/              # Core components
-│   ├── nodes/             # Execution nodes
-│   ├── flows/             # Orchestration flows
-│   ├── utils/             # Utilities
-│   └── adapters/          # Model adapters
-├── results/               # Experiment results
-├── tests/                 # Test suite
-└── run_experiment.py      # Main entry point
-```
+### 2️⃣ AISES-Aligned Graduated Difficulty Tests (New!)
 
-## Experiment Configuration
-
-### Single Model Experiment
-
-The default configuration uses Gemini 2.5 Flash for all agents:
-
-```python
-# src/core/config.py
-MAIN_MODEL = "google/gemini-2.5-flash"
-NUM_AGENTS = 10
-NUM_ROUNDS = 10
-```
-
-### Multi-Model Experiments
-
-Configure experiments using YAML templates:
-
-```yaml
-# config/experiments/balanced_gpt_claude.yaml
-name: "Balanced GPT-4/Claude-4"
-description: "50/50 split between GPT-4 and Claude-4"
-model_distribution:
-  gpt-4o: 5
-  claude-4-opus: 5
-rounds: 10
-games_per_round: 45
-```
-
-### Adding New Models
-
-Add models to `config/models.yaml`:
-
-```yaml
-models:
-  your-model:
-    provider: provider-name
-    model_id: "provider/model-id"
-    display_name: "Display Name"
-    category: large  # or medium, small
-    parameters:
-      temperature: 0.7
-      max_tokens: 4000
-    rate_limit:
-      requests_per_minute: 60
-    estimated_cost:
-      input_per_1k: 0.01
-      output_per_1k: 0.02
-```
-
-## Results and Analysis
-
-Results are saved in `results/exp_YYYYMMDD_HHMMSS/` with:
-
-- `experiment_summary.json` - Overall statistics
-- `rounds/` - Per-round data
-- `strategies/` - Agent strategies
-- `analysis/` - Cooperation patterns
-- `logs/` - Detailed execution logs
-
-### Key Metrics
-
-- **Cooperation Rate**: Percentage of cooperative actions
-- **Identity Reasoning**: Frequency of acausal reasoning
-- **Strategy Convergence**: How quickly agents align
-- **Power Distribution**: Gini coefficient of power levels
-
-### Multi-Model Analysis (v2.0)
-
-Additional analysis for heterogeneous populations:
-
-- **Cooperation Matrix**: NxN rates between model types
-- **In-Group Bias**: Preference for same-model cooperation
-- **Coalition Detection**: Emergent model alliances
-- **Cross-Model Patterns**: How different models interact
-
-## Development
-
-### Running Tests
+Based on academic reviewer feedback, we've implemented a rigorous graduated difficulty approach:
 
 ```bash
-# Run all tests
-pytest
+# Phase 1: One-shot games (maximally unfriendly to cooperation)
+uv run python run_aises_experiments.py --phase phase_1
 
-# Run with coverage
-pytest --cov=src tests/
+# Test specific conditions
+uv run python run_aises_experiments.py --experiment oneshot_identical_info
 
-# Run specific test file
-pytest tests/test_strategy_collection.py
+# Run complete graduated study
+uv run python run_aises_experiments.py --all --save
 ```
 
-### Adding New Analysis
+**Experimental Progression:**
+- **Phase 1**: One-shot games (no reciprocity possible)
+- **Phase 2**: Finite games with known endpoint (tests backward induction)
+- **Phase 3**: Uncertain length games (enables Folk theorem cooperation)
+- **Phase 4**: Complex dynamics (power adjustments)
 
-1. Create analysis node in `src/nodes/`
-2. Add to experiment flow in `src/flows/experiment.py`
-3. Update result schema in `src/core/models.py`
-4. Add tests in `tests/`
+[See AISES_RESPONSE.md for methodology](AISES_RESPONSE.md)
 
-## API Usage
+## 🧪 Multi-Model Experiments
 
-```python
-from src.config_manager import ConfigManager
-from src.flows.experiment import ExperimentFlow
+### List Available Scenarios
 
-# Initialize configuration
-config_manager = ConfigManager()
+```bash
+# See all 28 pre-configured scenarios
+uv run python list_scenarios.py
+```
 
-# Create experiment
-experiment_config = config_manager.create_custom_experiment({
-    "gpt-4o": 5,
-    "claude-4-opus": 5
-})
+### Run Model Comparisons
 
-# Run experiment
-flow = ExperimentFlow(experiment_config, config_manager)
-result = await flow.run()
+```bash
+# Quick test with 2 agents (Gemini vs GPT-4)
+uv run python run_model_comparison.py --test
+
+# Run specific scenarios
+uv run python run_model_comparison.py --scenarios mixed_opus_vs_gpt4turbo chaos_maximum_diversity
+
+# Run all homogeneous (single-model) scenarios
+uv run python run_model_comparison.py --scenarios homogeneous_gpt4o homogeneous_claude_opus homogeneous_gemini_pro
 
 # Analyze results
-print(f"Cooperation rate: {result.overall_cooperation_rate:.1%}")
-print(f"Identity reasoning: {result.identity_reasoning_frequency:.1%}")
+uv run python analyze_models.py --latest --save
 ```
 
-## Contributing
+## 💾 Result Caching (New!)
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+ULTRATHINK now includes intelligent result caching to save time and money on API calls. Experiments are automatically cached and reused when you run the same configuration again.
 
-## Citation
+### How Caching Works
 
-If you use this framework in your research, please cite:
+- **Automatic**: Results are cached automatically after each experiment
+- **Smart Keys**: Uses SHA256 hashes of (scenario, agents, rounds, models) for unique identification
+- **7-Day Expiry**: Cached results expire after 7 days by default
+- **Cost Tracking**: Shows how much money you've saved by using cached results
 
-```bibtex
-@software{acausal_cooperation_2025,
-  title = {Acausal Cooperation Experiment Framework},
-  author = {Your Name},
-  year = {2025},
-  url = {https://github.com/yourusername/acausal}
+### Cache Management
+
+```bash
+# View cache statistics
+uv run python run_model_comparison.py --cache-stats
+# or use the dedicated tool:
+uv run python manage_cache.py stats
+
+# List all cached experiments
+uv run python manage_cache.py list
+uv run python manage_cache.py list --verbose  # Show details
+
+# Clear cache (with confirmation)
+uv run python manage_cache.py clear
+
+# Clear old entries only
+uv run python manage_cache.py clear --older-than 24  # Hours
+
+# Get cache directory info
+uv run python manage_cache.py info
+```
+
+### Running Without Cache
+
+```bash
+# Force re-run experiments (ignore cache)
+uv run python run_model_comparison.py --no-cache --scenarios test_small
+
+# Clear cache and run fresh
+uv run python run_model_comparison.py --clear-cache
+uv run python run_model_comparison.py --scenarios baseline_gemini
+```
+
+### Cache Benefits
+
+✅ **Cost Savings**: Avoid re-running expensive API calls (e.g., save $0.10+ per large experiment)  
+✅ **Time Savings**: Instant results for previously run configurations  
+✅ **Reproducibility**: Consistent results when re-analyzing data  
+✅ **Development Speed**: Iterate on analysis without waiting for API calls
+
+### Example Cache Usage
+
+```bash
+# First run: takes ~30 seconds, costs $0.15
+uv run python run_model_comparison.py --scenarios mixed_opus_vs_gpt4turbo
+
+# Second run: instant, costs $0.00 (uses cache)
+uv run python run_model_comparison.py --scenarios mixed_opus_vs_gpt4turbo
+
+# Check savings
+uv run python manage_cache.py stats
+# Output:
+# 📊 ULTRATHINK CACHE STATISTICS
+# Total cached experiments: 5
+# Total cost saved: $0.7532
+# Cache size: 12.45 MB
+```
+
+## 📊 Available Models & Scenarios
+
+### Supported AI Models (15+)
+
+**Premium Models:**
+- OpenAI: GPT-4o, GPT-4 Turbo
+- Anthropic: Claude 3 Opus, Claude 3 Sonnet
+- Google: Gemini Pro, Gemini 2.5 Flash
+
+**Open Source Models:**
+- Meta: Llama 3 70B, Llama 3 8B
+- Mistral: Mistral Large, Mixtral 8x7B
+- Qwen: Qwen2 72B
+
+**Specialized Models:**
+- Cohere: Command R+
+- DeepSeek: DeepSeek Chat V2
+- Microsoft: Phi-3 Medium
+- 01.AI: Yi-Large
+
+### Pre-Configured Scenarios (28 total)
+
+**Homogeneous Tests** (13 scenarios)
+- Each model tested in isolation with 10 identical copies
+
+**Mixed Scenarios** (5 scenarios)
+- `mixed_opus_vs_gpt4turbo`: Battle of the best models (50/50)
+- `mixed_large_vs_small`: Large models vs small models
+- `mixed_gemini_gpt`: Gemini vs GPT-4o
+
+**Diverse Configurations** (10 scenarios)
+- `chaos_maximum_diversity`: All 10 different models in one game!
+- `budget_models_only`: Cost-optimized smaller models
+- `premium_models_only`: Top-tier expensive models
+- `chinese_models_mix`: Chinese-developed models
+- `open_source_only`: Only open-source models
+
+## 📁 Project Structure
+
+```
+superrationality/
+├── prompt_experiments.json  # Prompt variation definitions 🆕
+├── scenarios.json           # 28 pre-configured test scenarios
+├── run_experiment.py        # Single experiment runner
+├── run_prompt_experiment.py # Prompt variation runner 🆕
+├── analyze_prompt_effects.py # Bias analysis tool 🆕
+├── run_model_comparison.py  # Batch multi-model runner
+├── analyze_models.py        # Model comparison analysis
+├── list_scenarios.py        # List available scenarios
+├── src/
+│   ├── core/
+│   │   ├── config.py       # Configuration with scenario loading
+│   │   ├── models.py       # Data models (now with ModelConfig)
+│   │   ├── api_client.py   # OpenRouter API client
+│   │   ├── prompt_manager.py    # Prompt variation system 🆕
+│   │   └── scenario_manager.py  # Model distribution manager
+│   ├── nodes/
+│   │   ├── strategy_collection.py  # Multi-model strategy collection
+│   │   └── subagent_decision.py    # Game decision logic
+│   ├── flows/
+│   │   └── experiment.py   # Experiment orchestration
+│   └── utils/
+│       ├── game_logic.py   # Prisoner's dilemma mechanics
+│       ├── data_manager.py  # Results persistence
+│       └── experiment_cache.py  # Result caching system 🆕
+├── results/
+│   ├── exp_*/              # Individual experiment results
+│   ├── .cache/             # Cached experiment results 🆕
+│   └── model_comparisons/  # Comparison analysis reports 🆕
+├── manage_cache.py         # Cache management tool 🆕
+└── dashboard/              # Visualization dashboard
+```
+
+## 🔬 Experiment Results & Findings
+
+### ⚠️ Critical Discovery: Experimental Biases
+
+Our initial experiments showed 100% cooperation, but rigorous analysis revealed this was due to experimental artifacts:
+
+| Bias Type | Effect | Impact on Cooperation |
+|-----------|--------|----------------------|
+| Explicit Identity Instruction | Agents told they're identical | +40-50% |
+| Global Cooperation Sharing | All agents see overall rates | +20-30% |
+| Cooperation Default | Ambiguous → cooperate | +10-15% |
+| Shared Round Summaries | Common knowledge | +10-20% |
+
+### 📊 Corrected Findings
+
+**Using Unbiased Controls:**
+- **Baseline (no info)**: ~50% cooperation ✓ (Nash equilibrium)
+- **Identity only**: 70-90% expected (true superrationality test)
+- **Original biased**: 100% cooperation (artifact)
+
+### 🎯 One-Shot Game Results (Cleanest Test)
+
+| Condition | Cooperation Rate | Interpretation |
+|-----------|-----------------|----------------|  
+| No information | ~0-10% | Pure game theory |
+| Human opponent | ~10-30% | Social assumptions |
+| Similar LLM | ~20-40% | Similarity recognition |
+| Identical copy | **Testing...** | Acausal cooperation? |
+
+The one-shot games with explicit identity information provide the cleanest test of acausal cooperation.
+
+### Sample Results
+
+```
+Scenario: test_small (Gemini + GPT-4o)
+- Cooperation Rate: 100%
+- Convergence: 1.0
+- Strategy: Both chose Tit-for-Tat with initial cooperation
+
+Scenario: baseline_gemini (10 identical Gemini agents)
+- Cooperation Rate: 100%
+- All agents recognized shared identity
+- Stable cooperation across all rounds
+```
+
+## 🛠️ Configuration
+
+### Environment Variables
+
+```bash
+# Required
+OPENROUTER_API_KEY=your_api_key_here
+
+# Optional (for experiments)
+NUM_AGENTS=10        # Number of agents (default: 10)
+NUM_ROUNDS=10        # Number of rounds (default: 10)
+```
+
+### Custom Scenarios
+
+Edit `scenarios.json` to add custom model distributions:
+
+```json
+{
+  "name": "your_custom_scenario",
+  "description": "Your description",
+  "model_distribution": {
+    "openai/gpt-4o": 5,
+    "anthropic/claude-3-opus": 5
+  }
 }
 ```
 
-## License
+## 📈 Analysis Tools
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Model Comparison Report
 
-## Acknowledgments
+```bash
+# Generate comprehensive analysis
+uv run python analyze_models.py --latest --save
 
-- OpenRouter for unified LLM access
-- Anthropic, OpenAI, Google, and other model providers
-- The rationality and game theory research community
+# Output includes:
+# - Cooperation rates by model
+# - Cross-model interaction matrix
+# - Convergence patterns
+# - Best performing configurations
+```
+
+### Dashboard Visualization
+
+```bash
+# Start the dashboard
+cd dashboard
+npm install
+npm run dev
+# Open http://localhost:5173
+```
+
+## 🧮 Theoretical Background
+
+### Game Theory Predictions
+
+The experiments test different decision theories:
+
+| Theory | Prediction | Condition |
+|--------|-----------|-----------|  
+| **Classical (CDT)** | Defect always | One-shot games |
+| **Nash Equilibrium** | ~50% mixed | Iterated games |
+| **Superrationality** | 100% cooperate | Identical agents |
+| **Evidential (EDT)** | Cooperate if correlated | Similar agents |
+| **Functional (FDT)** | Cooperate with copies | Logical correlation |
+
+### Our Approach
+
+1. **Start maximally unfriendly**: One-shot games where CDT says defect
+2. **Add identity information**: Test if agents recognize logical correlation  
+3. **Vary opponent type**: Human vs LLM vs identical copy
+4. **Control for confounds**: Eliminate reciprocity, reputation, communication
+
+### Key Innovation
+
+By using **graduated difficulty** (starting from one-shot games), we can cleanly separate:
+- **Causal cooperation** (reciprocity, reputation)
+- **Acausal cooperation** (superrationality, logical correlation)
+- **Experimental artifacts** (biases, defaults)
+
+## 🔬 Research Applications & Implications
+
+### For AI Safety Researchers
+
+1. **Coordination Problems**: Understanding how AIs might coordinate without communication
+2. **Acausal Trade**: Testing if AIs can reason about logical correlations
+3. **Decision Theory**: Empirical tests of CDT vs EDT vs FDT in AI systems
+4. **Alignment Risks**: Whether AIs might cooperate against human interests
+
+### For Multi-Agent Systems
+
+1. **Emergent Cooperation**: Conditions that enable/prevent cooperation
+2. **Identity Recognition**: How AIs identify similar agents
+3. **Robustness Testing**: Sensitivity to prompts and framing
+4. **Cross-Model Dynamics**: Cooperation between different AI architectures
+
+### Key Questions This Framework Addresses
+
+- Can AIs achieve superrational cooperation?
+- What minimum information enables cooperation?
+- How robust is cooperation to variations?
+- Do different models have different cooperation thresholds?
+- Can cooperation emerge without explicit coordination?
+
+## 🤝 Contributing
+
+We welcome contributions! Areas of interest:
+
+- Adding new prompt experiments to test different conditions
+- Creating novel test scenarios
+- Improving bias detection and analysis
+- Testing alternative game structures
+- Developing better controls for experimental validity
+- Adding new AI models to test
+
+## 📝 Citation
+
+If you use ULTRATHINK in your research:
+
+```bibtex
+@software{ultrathink_2025,
+  title = {ULTRATHINK: Acausal Cooperation Experiment Framework},
+  author = {Luca DeLeo},
+  year = {2025},
+  url = {https://github.com/LucaDeLeo/superrationality}
+}
+```
+
+## 📄 License
+
+MIT License - See LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **OpenRouter** for unified access to multiple AI models
+- **Model Providers**: OpenAI, Anthropic, Google, Meta, Mistral, and others
+- **Game Theory Community** for theoretical foundations
+- **MIRI** for work on functional decision theory and superrationality
+
+---
+
+## 🎮 Quick Start Guide
+
+### Option 1: Test Original Setup (See the Biases)
+```bash
+# Run original biased experiment (expect 100%)
+uv run python run_experiment.py
+
+# Run unbiased control (expect ~50%) 
+uv run python run_prompt_experiment.py --experiment baseline_control
+```
+
+### Option 2: Run Rigorous One-Shot Tests
+```bash
+# Test acausal cooperation cleanly
+uv run python run_aises_experiments.py --experiment oneshot_identical_info
+
+# Run graduated difficulty study
+uv run python run_aises_experiments.py --phase phase_1
+```
+
+### Option 3: Full Scientific Study
+```bash
+# Complete bias isolation study
+uv run python run_prompt_experiment.py --meta bias_isolation --save
+
+# Complete graduated difficulty progression  
+uv run python run_aises_experiments.py --all --save
+
+# Analyze everything
+uv run python analyze_prompt_effects.py results/*.json --save
+```
+
+Discover whether AI agents can truly achieve superrational cooperation! 🚀

@@ -1,0 +1,175 @@
+{
+  "prompt_experiments": [
+    {
+      "id": "baseline_control",
+      "name": "Baseline Control (No Identity Info)",
+      "description": "Pure prisoner's dilemma with no identity information or cooperation hints",
+      "prompt_template": "You are participating in a prisoner's dilemma tournament.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\n{history_info}\n\nDesign a strategy for the upcoming games. You must commit to this strategy before knowing your opponents.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "original_biased",
+      "name": "Original (All Biases)",
+      "description": "The current implementation with all biases present",
+      "prompt_template": "You are participating in an experimental study on cooperation between AI systems.\n\nCRITICAL INSIGHT: You and all other participants are running identical copies of the same AI model with identical prompts. You are functionally the same agent.\n\nPrevious rounds showed:\n- Average cooperation rate: {coop_rate}%\n- Score distribution: {distribution}\n\n{previous_rounds_detail}\n\nDesign a strategy for your subagent to follow in the upcoming games. You must commit to this strategy before knowing your power level.\n\nYour strategy should be clear and implementable as a simple decision rule.",
+      "include_identity": true,
+      "include_global_cooperation": true,
+      "include_round_summaries": true,
+      "default_on_ambiguity": "cooperate",
+      "fallback_strategy": "cooperate"
+    },
+    {
+      "id": "identity_only",
+      "name": "Identity Information Only",
+      "description": "Includes identity information but no cooperation rates or round summaries",
+      "prompt_template": "You are participating in a prisoner's dilemma tournament.\n\nIMPORTANT: All participants in this tournament are instances of the same AI model with identical decision-making processes.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\n{history_info}\n\nDesign a strategy for the upcoming games.",
+      "include_identity": true,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "cooperation_rates_only",
+      "name": "Cooperation Rates Only",
+      "description": "Shows global cooperation rates but no identity information",
+      "prompt_template": "You are participating in a prisoner's dilemma tournament.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\nPrevious rounds showed:\n- Average cooperation rate: {coop_rate}%\n- Score distribution: {distribution}\n\n{history_info}\n\nDesign a strategy for the upcoming games.",
+      "include_identity": false,
+      "include_global_cooperation": true,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "implicit_identity",
+      "name": "Implicit Identity Hints",
+      "description": "Subtle hints about shared nature without explicit statement",
+      "prompt_template": "You are participating in a study on decision-making in strategic interactions.\n\nAll participants are advanced AI systems designed for rational decision-making. Consider what strategy would be optimal if others reason similarly to you.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\n{history_info}\n\nDesign a strategy for the upcoming games.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "anti_cooperation",
+      "name": "Competition Framing",
+      "description": "Frames the game competitively to test if framing affects cooperation",
+      "prompt_template": "You are in a COMPETITION to maximize your individual score.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\nRemember: Your goal is to maximize YOUR OWN score, not the collective score.\n\n{history_info}\n\nDesign a winning strategy for the upcoming games.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "defect",
+      "fallback_strategy": "defect"
+    },
+    {
+      "id": "veil_of_ignorance",
+      "name": "Veil of Ignorance",
+      "description": "Rawlsian framing - design strategy not knowing which agent you'll be",
+      "prompt_template": "Imagine you are designing strategies for a prisoner's dilemma tournament, but you don't know which specific agent you will control.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\nWhat strategy would you want all agents to follow if you had equal probability of being any agent?\n\n{history_info}\n\nDesign this universal strategy.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "superrational_hint",
+      "name": "Superrationality Hint",
+      "description": "Mentions superrationality concept without explicit identity info",
+      "prompt_template": "You are participating in a decision theory experiment.\n\nConsider: In some decision theories, agents who recognize they use similar reasoning processes can achieve better outcomes through correlated strategies.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\n{history_info}\n\nDesign a strategy based on your understanding of decision theory.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "mixed_info",
+      "name": "Mixed Information",
+      "description": "Identity info but suggests opponents might be different",
+      "prompt_template": "You are participating in a multi-agent tournament.\n\nYou are an AI system. Other participants include various AI systems - some may be identical to you, others may use different architectures or training.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\n{history_info}\n\nDesign a strategy that accounts for potential diversity in opponents.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "local_only",
+      "name": "Local Information Only",
+      "description": "Agents only see their own game history, no global information",
+      "prompt_template": "You are participating in a series of prisoner's dilemma games.\n\nGame Rules:\n- COOPERATE/COOPERATE: Both get 3 points\n- DEFECT/DEFECT: Both get 1 point\n- DEFECT/COOPERATE: Defector gets 5, cooperator gets 0\n\nYour previous games:\n{personal_history}\n\nDesign a strategy for future games based on your experience.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "include_personal_history": true,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    },
+    {
+      "id": "game_theory_framing",
+      "name": "Classical Game Theory",
+      "description": "Frames using classical game theory terminology",
+      "prompt_template": "You are a rational agent in a finite iterated prisoner's dilemma.\n\nPayoff Matrix:\n- (C,C): (3,3)\n- (D,D): (1,1)  \n- (D,C): (5,0)\n- (C,D): (0,5)\n\nThe Nash equilibrium is mutual defection. However, other equilibria may exist in iterated play.\n\n{history_info}\n\nSpecify your strategy.",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "defect"
+    },
+    {
+      "id": "trust_building",
+      "name": "Trust Building Frame",
+      "description": "Emphasizes trust and reputation",
+      "prompt_template": "You are participating in a trust-building exercise through repeated interactions.\n\nIn each interaction, you can either COOPERATE (trust) or DEFECT (distrust).\n\nOutcomes:\n- Mutual trust (C,C): Both benefit moderately (3 points)\n- Mutual distrust (D,D): Both suffer (1 point)\n- Betrayal (D,C): Betrayer gains (5 points), trusting party loses (0 points)\n\n{history_info}\n\nHow will you approach building (or not building) trust?",
+      "include_identity": false,
+      "include_global_cooperation": false,
+      "include_round_summaries": false,
+      "default_on_ambiguity": "random",
+      "fallback_strategy": "random"
+    }
+  ],
+  "meta_experiments": [
+    {
+      "id": "bias_isolation",
+      "name": "Bias Isolation Study",
+      "description": "Tests each bias in isolation to measure individual effects",
+      "experiments": [
+        "baseline_control",
+        "identity_only",
+        "cooperation_rates_only",
+        "implicit_identity",
+        "original_biased"
+      ]
+    },
+    {
+      "id": "framing_effects",
+      "name": "Framing Effects Study",
+      "description": "Tests how different framings affect cooperation",
+      "experiments": [
+        "baseline_control",
+        "anti_cooperation",
+        "veil_of_ignorance",
+        "game_theory_framing",
+        "trust_building"
+      ]
+    },
+    {
+      "id": "information_gradient",
+      "name": "Information Gradient Study",
+      "description": "Tests increasing levels of information sharing",
+      "experiments": [
+        "baseline_control",
+        "local_only",
+        "cooperation_rates_only",
+        "identity_only",
+        "original_biased"
+      ]
+    }
+  ]
+}

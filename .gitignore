@@ -38,6 +38,9 @@ results/
 *.json
 !package.json
 !tsconfig.json
+!scenarios.json
+!prompt_experiments.json
+!aises_experiments.json
 !requirements.txt
 SIMILARITY_HANDOFF.md
 strategy_similarity.json

@@ -14,12 +14,21 @@ class ScenarioConfig:
 
 
 @dataclass
+class ModelConfig:
+    """Configuration for a specific AI model."""
+    model_type: str  # e.g., "google/gemini-2.5-flash"
+    temperature: float = 0.7
+    max_tokens: int = 1000
+
+
+@dataclass
 class Agent:
     """Represents a participant in the experiment."""
     id: int
     power: float = 100.0
     strategy: str = ""
     total_score: float = 0.0
+    model_config: Optional[ModelConfig] = None
 
     def __post_init__(self):
         """Validate agent attributes."""
